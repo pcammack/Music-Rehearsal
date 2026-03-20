@@ -426,6 +426,7 @@ input[type=file]{display:none}
         <button class="btn-save-session" onclick="saveSessionToStorage()">+ Save current</button>
       </div>
       <div id="sessions-list"><span class="session-empty">No saved sessions yet.</span></div>
+      <div id="sessions-diag" style="font-size:0.4rem;color:var(--text-faint);margin-top:0.3rem"></div>
     </div>
   </div>
 
@@ -1375,6 +1376,10 @@ async function deleteNamedSession(name) {
 async function renderSessionsList() {
   const sessions = await loadSessionsFromStorage();
   const el = document.getElementById('sessions-list');
+  // Diagnostic: show raw localStorage value for debugging
+  const raw = localStorage.getItem(SESSIONS_STORAGE_KEY);
+  const diagEl = document.getElementById('sessions-diag');
+  if (diagEl) diagEl.textContent = `storage: ${raw ? raw.length + ' chars' : 'empty/blocked'}`;
   const keys = Object.keys(sessions).sort((a,b)=>(sessions[b].savedAt||0)-(sessions[a].savedAt||0));
   if (!keys.length) { el.innerHTML = '<span class="session-empty">No saved sessions yet.</span>'; return; }
   el.innerHTML = keys.map(name => {
@@ -1419,27 +1424,20 @@ function exportLibraryJSON() {
 }
 
 function importLibraryJSON(file) {
-  if (!file) { alert('No file received.'); return; }
-  alert('Reading file: ' + file.name);
+  if (!file) return;
   const reader = new FileReader();
   reader.onload = async ev => {
     let payload;
     try { payload = JSON.parse(ev.target.result); }
-    catch(e) { alert('Invalid JSON file — could not parse.'); return; }
+    catch(e) { alert('Could not parse file — make sure it is a valid JSON backup.'); return; }
 
-    // Validate structure
     if (!payload || typeof payload !== 'object') {
-      alert('Import failed: file is not a valid library backup.'); return;
+      alert('Import failed: not a valid library backup.'); return;
     }
 
-    // Normalise to sessions object
-    // Format A: {version, sessions: {...}}  — exported by this app
-    // Format B: {version, sessions: [...]}  — shouldn't occur but handle
-    // Format C: raw array [{id, name, markers, ...}]  — mr_lib_v4 backup format
-    // Format D: raw keyed object {name: {markers, ...}}  — also accepted
+    // Normalise to sessions object (handles all backup formats)
     let sessions;
     if (Array.isArray(payload)) {
-      // Format C: convert array of pieces to keyed sessions object
       sessions = {};
       payload.forEach(piece => {
         if (piece && piece.name && Array.isArray(piece.markers)) {
@@ -1457,7 +1455,6 @@ function importLibraryJSON(file) {
     } else {
       const inner = payload.sessions || payload;
       if (Array.isArray(inner)) {
-        // Format B: sessions is an array — same conversion
         sessions = {};
         inner.forEach(piece => {
           if (piece && piece.name && Array.isArray(piece.markers)) {
@@ -1473,35 +1470,44 @@ function importLibraryJSON(file) {
           }
         });
       } else {
-        sessions = inner; // Format A or D
+        sessions = inner;
       }
     }
 
     if (typeof sessions !== 'object' || Array.isArray(sessions)) {
       alert('Import failed: unrecognised format.'); return;
     }
-    // Validate each session entry has at least markers array
+
     const keys = Object.keys(sessions);
     const valid = keys.filter(k => Array.isArray(sessions[k].markers));
-    if (!valid.length) {
-      alert('Import failed: no valid sessions found in file.'); return;
-    }
-    const invalid = keys.length - valid.length;
-    const msg = `Import ${valid.length} session(s)${invalid ? ` (${invalid} skipped — invalid)` : ''}?\nThis will MERGE with existing saved sessions (not overwrite).`;
-    if (!confirm(msg)) return;
+    if (!valid.length) { alert('Import failed: no valid sessions found.'); return; }
 
-    // Merge into existing storage — never clobber, just add missing
+    // Merge — only add sessions whose name doesn't already exist
     const existing = await loadSessionsFromStorage();
     let added = 0;
     valid.forEach(k => {
       if (!existing[k]) { existing[k] = sessions[k]; added++; }
     });
     await saveSessionsToStorage(existing);
-    renderSessionsList();
-    alert(`Import complete: ${added} new session(s) added.${added < valid.length ? ` ${valid.length - added} skipped (name already exists).` : ''}`);
+
+    // Open the sessions panel and refresh the list
+    const body = document.getElementById('sessions-body');
+    const arrow = document.getElementById('sessions-arrow');
+    if (body.style.display !== 'block') {
+      body.style.display = 'block';
+      arrow.textContent = '▾';
+    }
+    await renderSessionsList();
+
+    // Show a brief inline status rather than an alert
+    const el = document.createElement('div');
+    el.style.cssText = 'font-size:0.5rem;color:var(--green);margin-top:0.35rem;padding:0.2rem 0';
+    el.textContent = `✓ ${added} piece${added!==1?'s':''} imported${added < valid.length ? ` (${valid.length-added} skipped — already exist)` : ''}`;
+    const list = document.getElementById('sessions-list');
+    list.parentNode.insertBefore(el, list);
+    setTimeout(() => el.remove(), 4000);
   };
   reader.readAsText(file);
-  // Reset input so same file can be re-imported
   document.getElementById('import-json-input').value = '';
 }
 
