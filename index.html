@@ -1310,16 +1310,18 @@ function loadSession() {
 }
 
 // ══════════════════════════════════════════════
-// NAMED SESSION STORAGE (artifact persistent storage)
+// NAMED SESSION STORAGE (localStorage)
 // ══════════════════════════════════════════════
-const SESSIONS_STORAGE_KEY = 'scoreSplitter_v2_sessions';
+const SESSIONS_STORAGE_KEY = 'mr_sessions_v4';
 
 async function loadSessionsFromStorage() {
-  try { const r = await window.storage.get(SESSIONS_STORAGE_KEY); return r?JSON.parse(r.value):{}; }
-  catch(e) { return {}; }
+  try {
+    const raw = localStorage.getItem(SESSIONS_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch(e) { return {}; }
 }
 async function saveSessionsToStorage(sessions) {
-  try { await window.storage.set(SESSIONS_STORAGE_KEY, JSON.stringify(sessions)); } catch(e) {}
+  try { localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(sessions)); } catch(e) {}
 }
 
 async function saveSessionToStorage() {
