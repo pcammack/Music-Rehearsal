@@ -51,12 +51,10 @@ header{padding:1rem 1.5rem;border-bottom:1px solid var(--border);
 .transport-label{font-size:0.44rem;color:var(--text-faint);letter-spacing:0.1em}
 .speed-slider{width:70px;accent-color:var(--accent);cursor:pointer}
 .speed-val{font-size:0.5rem;color:var(--text-mid);min-width:2rem}
-.zoom-val{font-size:0.5rem;color:var(--text-mid);min-width:2.2rem;text-align:center}
 .player-hint{font-size:0.44rem;color:var(--text-faint);margin-top:0.3rem;line-height:1.8}
 .trim-toggle{display:flex;align-items:center;gap:0.35rem;
   font-size:0.44rem;color:var(--text-faint);cursor:pointer}
 .trim-toggle input{accent-color:var(--accent);cursor:pointer}
-/* hidden audio file input */
 input[type=file]{display:none}
 
 /* ── NO-FILE NOTICE ── */
@@ -71,8 +69,10 @@ input[type=file]{display:none}
   letter-spacing:0.06em;cursor:pointer;transition:all 0.15s;white-space:nowrap}
 .btn-load-file:hover{border-color:var(--accent);color:var(--accent)}
 
-/* ── MAIN BODY: side-by-side ── */
-.main-body{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem}
+/* ── MAIN BODY: markers+loops left | notes right ── */
+.main-body{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem;align-items:start}
+.main-left{display:flex;flex-direction:column;gap:0.75rem}
+.main-right{position:sticky;top:0.75rem}
 
 /* ── SECTION DIVIDER ── */
 .section-divider{font-size:0.46rem;letter-spacing:0.18em;text-transform:uppercase;
@@ -83,7 +83,6 @@ input[type=file]{display:none}
 /* ── MARKER PANEL ── */
 .marker-panel{background:var(--bg2);border:1px solid var(--border);padding:0.65rem 0.8rem}
 
-/* Marker grid: seq | label | time | dur | ▶ | 🔒 | ✕ */
 .marker-col-header,.marker-row{
   display:grid;
   grid-template-columns:16px 58px 72px 50px 20px 20px 20px;
@@ -110,9 +109,9 @@ input[type=file]{display:none}
 .marker-btn.lock.locked{color:var(--accent)}
 .marker-btn:disabled{opacity:0.25;cursor:not-allowed}
 
-/* ── SEGMENT PANEL ── */
-.segment-panel{background:var(--bg2);border:1px solid var(--border);padding:0.65rem 0.8rem}
-.seg-add-row{display:flex;align-items:center;gap:0.4rem;margin-bottom:0.5rem;flex-wrap:wrap}
+/* ── LOOPS PANEL ── */
+.loop-panel{background:var(--bg2);border:1px solid var(--border);padding:0.65rem 0.8rem}
+.loop-add-row{display:flex;align-items:center;gap:0.4rem;margin-bottom:0.5rem;flex-wrap:wrap}
 .seg-select{background:var(--bg3);border:1px solid var(--border);color:var(--text);
   font-family:'JetBrains Mono',monospace;font-size:0.52rem;padding:0.2rem 0.4rem;
   outline:none;cursor:pointer;min-width:70px}
@@ -123,35 +122,35 @@ input[type=file]{display:none}
 .btn-sm:hover{border-color:var(--accent);color:var(--accent)}
 .btn-sm.primary{background:var(--accent);border-color:var(--accent);color:var(--bg)}
 .btn-sm.primary:hover{background:var(--accent-d)}
-.btn-sm.danger:hover{border-color:var(--red);color:var(--red)}
+.btn-sm.active{background:var(--accent);border-color:var(--accent);color:var(--bg)}
 
-/* Segment rows */
-.seg-col-header,.seg-row{
+/* Loop rows: span | dur | ▶ | L | ✕ */
+.loop-col-header,.loop-row{
   display:grid;
-  grid-template-columns:1fr 90px 46px 20px 20px 20px;
+  grid-template-columns:1fr 50px 22px 22px 22px;
   gap:0.3rem;align-items:center}
-.seg-col-header{font-size:0.42rem;color:var(--text-faint);letter-spacing:0.1em;
-  text-transform:uppercase;padding-bottom:0.3rem;display:none}
-.seg-row{padding:0.22rem 0;border-bottom:1px solid var(--border)}
-.seg-row:last-child{border-bottom:none}
-.seg-row.excluded{opacity:0.45}
-.seg-name-input{background:none;border:none;color:var(--text);
-  font-family:'JetBrains Mono',monospace;font-size:0.54rem;
-  padding:0.1rem 0;width:100%;outline:none;border-bottom:1px solid transparent;
-  transition:border-color 0.15s}
-.seg-name-input:focus{border-bottom-color:var(--accent)}
-.seg-span{font-size:0.44rem;color:var(--text-faint);white-space:nowrap}
-.seg-dur{font-size:0.44rem;color:var(--text-faint);text-align:center}
-.seg-chk{accent-color:var(--accent);cursor:pointer;width:12px;height:12px}
-.seg-empty{font-size:0.54rem;color:var(--text-faint);padding:0.5rem 0;text-align:center}
+.loop-col-header{font-size:0.42rem;color:var(--text-faint);letter-spacing:0.1em;
+  text-transform:uppercase;padding-bottom:0.3rem;border-bottom:1px solid var(--border);
+  margin-bottom:0.2rem;display:none}
+.loop-row{padding:0.25rem 0;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s}
+.loop-row:last-child{border-bottom:none}
+.loop-row:hover{background:var(--bg3)}
+.loop-row.active-loop{background:var(--bg3);border-left:2px solid var(--accent);padding-left:0.3rem}
+.loop-span{font-size:0.5rem;color:var(--text)}
+.loop-dur{font-size:0.46rem;color:var(--text-faint);text-align:center}
+.loop-btn{background:none;border:none;cursor:pointer;font-size:0.55rem;
+  color:var(--text-faint);padding:0.1rem;transition:color 0.15s;text-align:center}
+.loop-btn:hover{color:var(--text)}
+.loop-btn.loop-active{color:var(--accent)}
+.loop-btn.delete:hover{color:var(--red)}
+.loop-empty{font-size:0.5rem;color:var(--text-faint);padding:0.5rem 0;text-align:center}
 
-/* ── NOTES ── */
-.notes-panel{background:var(--bg2);border:1px solid var(--border);
-  padding:0.65rem 0.8rem;margin-bottom:0.75rem}
+/* ── NOTES (right column, fixed+scrollable) ── */
+.notes-panel{background:var(--bg2);border:1px solid var(--border);padding:0.65rem 0.8rem}
 .notes-textarea{width:100%;background:var(--bg3);border:1px solid var(--border);
   color:var(--text);font-family:'JetBrains Mono',monospace;font-size:0.5rem;
-  padding:0.4rem 0.6rem;resize:vertical;min-height:56px;outline:none;
-  transition:border-color 0.15s;line-height:1.7}
+  padding:0.4rem 0.6rem;resize:none;height:260px;max-height:400px;
+  overflow-y:auto;outline:none;transition:border-color 0.15s;line-height:1.7}
 .notes-textarea:focus{border-color:var(--accent)}
 .notes-textarea::placeholder{color:var(--text-faint)}
 
@@ -229,7 +228,7 @@ input[type=file]{display:none}
 
 <header>
   <span class="app-name">Music Rehearsal</span>
-  <span class="app-ver">v4.3</span>
+  <span class="app-ver">v4.4</span>
 </header>
 
 <div class="piece-title-bar">
@@ -260,15 +259,7 @@ input[type=file]{display:none}
         <span class="player-time" id="player-time">0:00.0 / 0:00.0</span>
       </div>
       <div class="player-right">
-        <label class="trim-toggle" onclick="event.stopPropagation()">
-          <input type="checkbox" id="trim-silence" checked> Trim silence
-        </label>
-        <span class="transport-label" style="margin-left:0.5rem">Zoom</span>
-        <button class="btn-player" onclick="zoomOverview(-1)" style="padding:0.22rem 0.5rem">−</button>
-        <span class="zoom-val" id="zoom-val">1×</span>
-        <button class="btn-player" onclick="zoomOverview(1)" style="padding:0.22rem 0.5rem">+</button>
-        <button class="btn-player" onclick="resetZoom()">1:1</button>
-        <span class="transport-label" style="margin-left:0.5rem">Speed</span>
+        <span class="transport-label">Speed</span>
         <input type="range" class="speed-slider" id="speed-slider"
                min="0.5" max="2.0" step="0.05" value="1.0" oninput="onSpeedChange(this.value)">
         <span class="speed-val" id="speed-val">1×</span>
@@ -276,56 +267,62 @@ input[type=file]{display:none}
       </div>
     </div>
     <div class="player-hint">
-      SPACE play/pause · M mark · P play to next marker · Home back to start · click to seek · double-click to play · drag gold lines to reposition · scroll to zoom
+      SPACE play/pause · M mark · P play to next · ← −5s · → +10s · Home start · click to seek · drag markers · scroll to zoom
     </div>
   </div>
 
-  <!-- Main body: markers | segments -->
+  <!-- Main body: left (markers + loops) | right (notes) -->
   <div class="main-body">
 
-    <!-- Marker pool -->
-    <div class="marker-panel">
-      <div class="section-divider">
-        <span>Markers</span>
-        <span id="marker-count" style="color:var(--accent)">0 markers</span>
+    <!-- Left column: markers + loops -->
+    <div class="main-left">
+
+      <!-- Markers -->
+      <div class="marker-panel">
+        <div class="section-divider">
+          <span>Markers</span>
+          <span id="marker-count" style="color:var(--accent)">0 markers</span>
+        </div>
+        <div class="marker-col-header" id="marker-col-header">
+          <span>#</span><span>Label</span>
+          <span>Time</span><span>Dur→next</span>
+          <span>▶</span><span>🔒</span><span>✕</span>
+        </div>
+        <div id="marker-list"></div>
       </div>
-      <div class="marker-col-header" id="marker-col-header">
-        <span>#</span><span>Label</span>
-        <span>Time</span><span>Dur→next</span>
-        <span>▶</span><span>🔒</span><span>✕</span>
+
+      <!-- Loops -->
+      <div class="loop-panel">
+        <div class="section-divider">
+          <span>Loops</span>
+          <span id="loop-count" style="color:var(--accent)">0 loops</span>
+        </div>
+        <div class="loop-add-row">
+          <select class="seg-select" id="seg-start"><option value="">Start…</option></select>
+          <span style="color:var(--text-faint);font-size:0.6rem">→</span>
+          <select class="seg-select" id="seg-end"><option value="">End…</option></select>
+          <button class="btn-sm primary" onclick="addSegment()">+ Add</button>
+        </div>
+        <div class="loop-col-header" id="loop-col-header">
+          <span>Range</span><span>Dur</span><span>▶</span><span>⟳</span><span>✕</span>
+        </div>
+        <div id="seg-list"></div>
       </div>
-      <div id="marker-list"></div>
+
     </div>
 
-    <!-- Segment builder -->
-    <div class="segment-panel">
-      <div class="section-divider">
-        <span>Segments</span>
-        <span id="seg-count" style="color:var(--accent)">0 segments</span>
+    <!-- Right column: notes -->
+    <div class="main-right">
+      <div class="notes-panel">
+        <div class="section-divider">
+          <span>Notes</span>
+        </div>
+        <textarea class="notes-textarea" id="piece-notes"
+          placeholder="Tempo markings, phrasing ideas, notes for next practice…"
+          oninput="onNotesInput()"></textarea>
       </div>
-      <div class="seg-add-row">
-        <select class="seg-select" id="seg-start"><option value="">Start…</option></select>
-        <span style="color:var(--text-faint);font-size:0.6rem">→</span>
-        <select class="seg-select" id="seg-end"><option value="">End…</option></select>
-        <button class="btn-sm primary" onclick="addSegment()">+ Add</button>
-        <button class="btn-sm" onclick="addAllAdjacent()">All adjacent</button>
-      </div>
-      <div class="seg-col-header" id="seg-col-header">
-        <span>Name</span><span>Span</span><span>Dur</span>
-        <span>▶</span><span>✕</span><span>✓</span>
-      </div>
-      <div id="seg-list"></div>
     </div>
-  </div>
 
-  <!-- Notes -->
-  <div class="notes-panel">
-    <div class="section-divider">
-      <span>Notes</span>
-    </div>
-    <textarea class="notes-textarea" id="piece-notes"
-      placeholder="Tempo markings, phrasing ideas, notes for next practice…"
-      oninput="onNotesInput()"></textarea>
   </div>
 
   <!-- Library -->
@@ -342,6 +339,11 @@ input[type=file]{display:none}
       </div>
     </div>
     <div id="sessions-list"><span class="lib-empty">No pieces saved yet.</span></div>
+    <div style="margin-top:0.5rem;padding-top:0.4rem;border-top:1px solid var(--border)">
+      <label class="trim-toggle">
+        <input type="checkbox" id="trim-silence" checked> Trim leading/trailing silence on load
+      </label>
+    </div>
   </div>
 
   <!-- Tips -->
@@ -349,6 +351,8 @@ input[type=file]{display:none}
     <strong style="color:var(--text-mid)">SPACE</strong> play/pause ·
     <strong style="color:var(--text-mid)">M</strong> mark ·
     <strong style="color:var(--text-mid)">P</strong> play to next marker ·
+    <strong style="color:var(--text-mid)">← →</strong> −5s / +10s ·
+    <strong style="color:var(--text-mid)">L</strong> loop active segment ·
     <strong style="color:var(--text-mid)">Home</strong> back to start ·
     <strong style="color:var(--text-mid)">Ctrl+Z</strong> undo ·
     drag gold lines to reposition · 🔒 locks position ·
@@ -361,25 +365,25 @@ input[type=file]{display:none}
       <span>Documentation</span><span id="docs-arrow">▸</span>
     </button>
     <div class="collapsible-body" id="docs-body">
-      <span style="color:var(--accent);font-size:0.56rem">MUSIC REHEARSAL v4.3</span>
+      <span style="color:var(--accent);font-size:0.56rem">MUSIC REHEARSAL v4.4</span>
 
       <div class="doc-h">WORKFLOW</div>
-      1. Select a piece from the Library, then load its audio file when prompted.<br>
+      1. Select a piece from the Library — the file picker opens automatically.<br>
       2. Press Play. Press <strong style="color:var(--text)">M</strong> to drop markers while listening.<br>
-      3. In Segments: pick Start → End, click Add. Or "All adjacent" for consecutive pairs.<br>
-      4. Name segments, check/uncheck to include. Preview with ▶.<br>
-      5. Save the piece via Library → + Save current.
+      3. In Loops: pick Start → End markers, click Add. Click ⟳ to loop, ▶ to preview.<br>
+      4. Add notes in the Notes panel — saved automatically.<br>
+      5. Save via Library → + Save current.
 
       <div class="doc-h">MARKER NAMING</div>
       · <strong style="color:var(--text)">Numeric:</strong> 1 → 2 → 3<br>
       · <strong style="color:var(--text)">Alpha:</strong> A → B → C<br>
-      · <strong style="color:var(--text)">Dash-numeric:</strong> A-2 → A-3 → A-4<br>
-      · <strong style="color:var(--text)">Dash-alpha:</strong> 3-A → 3-B → 3-C<br>
-      · <strong style="color:var(--text)">Placeholder:</strong> . (period) — excluded from cascade and dropdowns
+      · <strong style="color:var(--text)">Dash-numeric:</strong> A-2 → A-3 → A-4 (subsections)<br>
+      · <strong style="color:var(--text)">Dash-alpha:</strong> 3-A → 3-B → 3-C (subsections)<br>
+      · <strong style="color:var(--text)">Placeholder:</strong> . (period) — excluded from cascade and loop dropdowns
 
       <div class="doc-h">KEYBOARD</div>
-      SPACE play/pause · M mark · P play to next marker ·
-      Home back to start · Ctrl/⌘+Z undo
+      SPACE play/pause · M mark · P play to next marker · ← −5s · → +10s ·
+      L loop active · Home back to start · Ctrl/⌘+Z undo
     </div>
   </div>
 
@@ -409,6 +413,7 @@ let audioDuration  = 0;
 let audioFileName  = '';
 let currentPieceName = '';
 let previewingSegId = null;
+let activeLoopId = null;
 let currentSpeed   = 1.0;
 
 const SILENCE_DB     = 0.005;
@@ -606,17 +611,27 @@ function drawOverview() {
     ctx.fillRect(px, WAVE_TOP + (WAVE_H - h)/2, 1, h);
   }
 
-  // Highlight active preview segment on waveform
-  if (previewingSegId !== null) {
-    const seg = segments.find(s => s.id === previewingSegId);
+  // Highlight active loop on waveform
+  const highlightId = activeLoopId !== null ? activeLoopId : previewingSegId;
+  if (highlightId !== null) {
+    const seg = segments.find(s => s.id === highlightId);
     if (seg) {
       const sm = markers.find(m => m.id === seg.startId);
       const em = markers.find(m => m.id === seg.endId);
       if (sm && em) {
         const x1 = ((sm.time - viewStart) / vDur) * W;
         const x2 = ((em.time - viewStart) / vDur) * W;
-        ctx.fillStyle = 'rgba(196,146,42,0.10)';
+        const isLoop = highlightId === activeLoopId;
+        ctx.fillStyle = isLoop ? 'rgba(196,146,42,0.18)' : 'rgba(196,146,42,0.10)';
         ctx.fillRect(x1, WAVE_TOP, x2-x1, WAVE_H);
+        if (isLoop) {
+          ctx.strokeStyle = 'rgba(196,146,42,0.5)';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4,3]);
+          ctx.beginPath(); ctx.moveTo(x1,WAVE_TOP); ctx.lineTo(x1,WAVE_TOP+WAVE_H); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(x2,WAVE_TOP); ctx.lineTo(x2,WAVE_TOP+WAVE_H); ctx.stroke();
+          ctx.setLineDash([]);
+        }
       }
     }
   }
@@ -701,7 +716,7 @@ function drawOverview() {
 const ZOOM_STEPS = [1,1.5,2,3,4,6,8,12,16,24,32];
 
 function updateZoomLabel() {
-  document.getElementById('zoom-val').textContent = zoomLevel === 1 ? '1×' : `${zoomLevel}×`;
+  // zoom-val display removed; zoom level tracked internally only
 }
 
 function _applyZoom(newZoom, centerTime) {
@@ -771,12 +786,13 @@ function _pause() {
   const snapBack = elapsed < SNAP_THRESHOLD;
   playOffset = snapBack ? queuePoint : _currentAudioTime();
   playGen++; _killSource(); isPlaying = false;
-  previewingSegId = null;
+  previewingSegId = null; activeLoopId = null;
   cancelAnimationFrame(animFrame);
   document.getElementById('btn-play').textContent = '▶ Play';
   document.getElementById('btn-play').classList.remove('active');
   _updateDisplay(playOffset);
   drawOverview();
+  renderLoops();
 }
 
 function _killSource() {
@@ -1023,12 +1039,6 @@ function refreshSegmentDropdowns() {
   if (ev) endSel.value   = ev;
 }
 
-function defaultSegName(startId, endId) {
-  const sm = markers.find(m=>m.id===startId);
-  const em = markers.find(m=>m.id===endId);
-  return sm&&em ? `${sm.label}→${em.label}` : 'segment';
-}
-
 function addSegment() {
   const startId = parseInt(document.getElementById('seg-start').value);
   const endId   = parseInt(document.getElementById('seg-end').value);
@@ -1038,46 +1048,18 @@ function addSegment() {
   if (!sm||!em||sm.time>=em.time) {
     alert('End marker must be after start marker.'); return;
   }
+  // Don't duplicate
+  if (segments.some(s=>s.startId===startId&&s.endId===endId)) return;
   pushUndo();
-  segments.push({
-    id: segmentIdCounter++,
-    startId, endId,
-    name: defaultSegName(startId, endId),
-    include: true
-  });
-  renderSegments(); saveSession();
-}
-
-function addAllAdjacent() {
-  if (markers.length < 2) return;
-  pushUndo();
-  const nonPh = markers.filter(m=>!isPlaceholder(m.label));
-  for (let i = 0; i < nonPh.length-1; i++) {
-    const a = nonPh[i], b = nonPh[i+1];
-    // Don't duplicate
-    const exists = segments.some(s=>s.startId===a.id&&s.endId===b.id);
-    if (!exists) {
-      segments.push({ id:segmentIdCounter++, startId:a.id, endId:b.id,
-        name: defaultSegName(a.id, b.id), include:true });
-    }
-  }
-  renderSegments(); saveSession();
+  segments.push({ id: segmentIdCounter++, startId, endId, include: true });
+  renderLoops(); saveSession();
 }
 
 function removeSegment(id) {
+  if (activeLoopId === id) { activeLoopId = null; if (isPlaying) _pause(); }
   pushUndo();
   segments = segments.filter(s=>s.id!==id);
-  renderSegments(); saveSession();
-}
-
-function toggleSegInclude(id) {
-  const seg = segments.find(s=>s.id===id);
-  if (seg) { seg.include = !seg.include; saveSession(); renderSegments(); }
-}
-
-function updateSegName(id, val) {
-  const seg = segments.find(s=>s.id===id);
-  if (seg) { seg.name = val; saveSession(); }
+  renderLoops(); saveSession();
 }
 
 function previewSegment(id) {
@@ -1087,49 +1069,93 @@ function previewSegment(id) {
   const em = markers.find(m=>m.id===seg.endId);
   if (!sm||!em) return;
   previewingSegId = id;
-  // Snap waveform view to show the segment
   const segDur = em.time - sm.time;
   const pad = segDur * 0.2;
-  const newStart = Math.max(0, sm.time - pad);
-  const newEnd   = Math.min(audioDuration, em.time + pad);
-  viewStart = newStart; viewEnd = newEnd;
-  zoomLevel = audioDuration / (newEnd - newStart);
-  updateZoomLabel();
+  viewStart = Math.max(0, sm.time - pad);
+  viewEnd   = Math.min(audioDuration, em.time + pad);
+  zoomLevel = audioDuration / (viewEnd - viewStart);
   _startPlayback(sm.time, segDur);
 }
 
-function renderSegments() {
-  const list   = document.getElementById('seg-list');
-  const header = document.getElementById('seg-col-header');
-  const countEl= document.getElementById('seg-count');
-  const included = segments.filter(s=>s.include).length;
-  countEl.textContent = `${included} of ${segments.length} selected`;
+function renderSegments() { renderLoops(); }
+
+function renderLoops() {
+  const list    = document.getElementById('seg-list');
+  const header  = document.getElementById('loop-col-header');
+  const countEl = document.getElementById('loop-count');
+  countEl.textContent = `${segments.length} loop${segments.length!==1?'s':''}`;
 
   if (!segments.length) {
-    header.style.display = 'none';
-    list.innerHTML = `<div class="seg-empty">No segments yet — add from markers above</div>`;
+    if (header) header.style.display = 'none';
+    list.innerHTML = `<div class="loop-empty">No loops yet — pick markers above and click Add</div>`;
     return;
   }
-  header.style.display = 'grid';
+  if (header) header.style.display = 'grid';
 
   list.innerHTML = segments.map(seg => {
     const sm = markers.find(m=>m.id===seg.startId);
     const em = markers.find(m=>m.id===seg.endId);
     if (!sm||!em) return '';
     const dur = Math.max(0, em.time - sm.time);
-    const span = `${fmtTime(sm.time)}–${fmtTime(em.time)}`;
-    const cls = seg.include ? 'seg-row' : 'seg-row excluded';
-    return `<div class="${cls}" id="seg-row-${seg.id}">
-      <input class="seg-name-input" value="${escHtml(seg.name)}"
-        onchange="updateSegName(${seg.id},this.value)" title="Segment name (rename freely)">
-      <span class="seg-span" title="${span}">${sm.label}→${em.label}</span>
-      <span class="seg-dur">${fmtTime(dur)}</span>
-      <button class="marker-btn" onclick="previewSegment(${seg.id})" title="Preview segment">▶</button>
-      <button class="marker-btn delete" onclick="removeSegment(${seg.id})" title="Remove">✕</button>
-      <input type="checkbox" class="seg-chk" ${seg.include?'checked':''}
-        onchange="toggleSegInclude(${seg.id})" title="Include in export">
+    const isActive = seg.id === activeLoopId;
+    return `<div class="loop-row${isActive?' active-loop':''}" id="seg-row-${seg.id}">
+      <span class="loop-span">${sm.label} → ${em.label}</span>
+      <span class="loop-dur">${fmtTime(dur)}</span>
+      <button class="loop-btn" onclick="previewSegment(${seg.id})" title="Preview">▶</button>
+      <button class="loop-btn${isActive?' loop-active':''}" onclick="toggleLoop(${seg.id})" title="Loop">⟳</button>
+      <button class="loop-btn delete" onclick="removeSegment(${seg.id})" title="Remove">✕</button>
     </div>`;
   }).filter(Boolean).join('');
+
+  drawOverview();
+}
+
+function toggleLoop(id) {
+  if (activeLoopId === id) {
+    activeLoopId = null;
+    previewingSegId = null;
+    if (isPlaying) _pause();
+  } else {
+    activeLoopId = id;
+    previewingSegId = id;
+    const seg = segments.find(s=>s.id===id);
+    if (seg && audioBuffer) {
+      const sm = markers.find(m=>m.id===seg.startId);
+      const em = markers.find(m=>m.id===seg.endId);
+      if (sm && em) {
+        const segDur = em.time - sm.time;
+        const pad = segDur * 0.15;
+        viewStart = Math.max(0, sm.time - pad);
+        viewEnd   = Math.min(audioDuration, em.time + pad);
+        zoomLevel = audioDuration / (viewEnd - viewStart);
+        _startLooping(sm.time, em.time);
+      }
+    }
+  }
+  renderLoops();
+}
+
+function _startLooping(startTime, endTime) {
+  if (!audioBuffer) return;
+  _killSource();
+  cancelAnimationFrame(animFrame);
+  const gen = ++playGen;
+  audioContext.resume().then(() => {
+    if (gen !== playGen) return;
+    audioSource = audioContext.createBufferSource();
+    audioSource.buffer = audioBuffer;
+    audioSource.playbackRate.value = currentSpeed;
+    audioSource.loop = true;
+    audioSource.loopStart = startTime;
+    audioSource.loopEnd = endTime;
+    audioSource.connect(audioContext.destination);
+    audioSource.start(0, startTime);
+    playOffset = startTime; playCtxStart = audioContext.currentTime;
+    isPlaying = true; queuePoint = startTime; playStartedAt = Date.now();
+    document.getElementById('btn-play').textContent = '⏸ Pause';
+    document.getElementById('btn-play').classList.add('active');
+    animFrame = requestAnimationFrame(_animLoop);
+  });
 }
 
 // ══════════════════════════════════════════════
@@ -1218,7 +1244,7 @@ async function loadNamedSession(name) {
 
   // Stop and clear current audio
   if (isPlaying) _pause();
-  audioBuffer = null; audioDuration = 0;
+  audioBuffer = null; audioDuration = 0; activeLoopId = null; previewingSegId = null;
   document.getElementById('audio-player').style.display = 'none';
   playOffset = 0; queuePoint = 0; _updateDisplay(0);
 
@@ -1269,7 +1295,7 @@ async function renderSessionsList() {
     return `<div class="lib-row${isActive?' active':''}" onclick="loadNamedSession('${safe}')">
       <div class="lib-row-left">
         <span class="lib-name">${safe}</span>
-        <span class="lib-meta">${mc}m · ${sc}s ${statusHtml}</span>
+        <span class="lib-meta">${mc} marker${mc!==1?'s':''} · ${sc} loop${sc!==1?'s':''} ${statusHtml}</span>
       </div>
       <div class="lib-row-right">
         <span class="lib-date">${date}</span>
@@ -1514,6 +1540,11 @@ function _hitTestMarker(mouseX, canvasWidth) {
       tooltip.style.display = 'none';
       const hit = _hitTestMarker(mouseX, rect.width);
       canvas.style.cursor = hit ? (hit.locked?'pointer':'ew-resize') : 'crosshair';
+      // #7 cursor hover → update timer display
+      if (mouseX >= 0 && mouseX <= rect.width) {
+        const hoverTime = Math.max(0, Math.min(audioDuration, viewStart + (mouseX/rect.width)*(viewEnd-viewStart)));
+        if (!isPlaying) _updateDisplay(hoverTime);
+      }
     }
   });
 
@@ -1567,6 +1598,13 @@ document.addEventListener('keydown', e => {
   if (e.code==='KeyM' && audioBuffer) { tapMarker('R'); }
   if (e.code==='KeyP' && audioBuffer) { e.preventDefault(); playToNextMarker(); }
   if (e.code==='Home') { e.preventDefault(); goToStart(); }
+  if (e.code==='ArrowLeft' && audioBuffer) { e.preventDefault(); skipAudio(-5); }
+  if (e.code==='ArrowRight' && audioBuffer) { e.preventDefault(); skipAudio(10); }
+  if (e.code==='KeyL' && audioBuffer) {
+    e.preventDefault();
+    if (activeLoopId !== null) { toggleLoop(activeLoopId); }
+    else if (segments.length) { toggleLoop(segments[segments.length-1].id); }
+  }
   if (e.code==='KeyZ' && (e.ctrlKey||e.metaKey)) { e.preventDefault(); undo(); }
 });
 
