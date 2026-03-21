@@ -248,7 +248,7 @@ input[type=file]{display:none}
 
 <header>
   <span class="app-name">Music Rehearsal</span>
-  <span class="app-ver">v4.6</span>
+  <span class="app-ver">v4.7</span>
 </header>
 
 <div class="piece-title-bar">
@@ -279,7 +279,11 @@ input[type=file]{display:none}
         <span class="player-time" id="player-time">0:00.0 / 0:00.0</span>
       </div>
       <div class="player-right">
-        <span class="transport-label">Tempo</span>
+        <span class="transport-label">Lead-in</span>
+        <button class="btn-player" onclick="stepLeadIn(-1)" style="padding:0.22rem 0.5rem">−</button>
+        <span class="speed-val" id="lead-in-val">0.5s</span>
+        <button class="btn-player" onclick="stepLeadIn(1)" style="padding:0.22rem 0.5rem">+</button>
+        <span class="transport-label" style="margin-left:0.5rem">Tempo</span>
         <button class="btn-player" onclick="stepTempo(-1)" style="padding:0.22rem 0.5rem">−</button>
         <input type="range" class="speed-slider" id="speed-slider"
                min="0.5" max="1.2" step="0.01" value="1.0" oninput="onSpeedChange(this.value)">
@@ -376,11 +380,6 @@ input[type=file]{display:none}
       </div>
     </div>
     <div id="sessions-list"><span class="lib-empty">No pieces saved yet.</span></div>
-    <div style="margin-top:0.5rem;padding-top:0.4rem;border-top:1px solid var(--border)">
-      <label class="trim-toggle">
-        <input type="checkbox" id="trim-silence" checked> Trim leading/trailing silence on load
-      </label>
-    </div>
   </div>
 
   <!-- Tips -->
@@ -402,7 +401,7 @@ input[type=file]{display:none}
       <span>Documentation</span><span id="docs-arrow">▸</span>
     </button>
     <div class="collapsible-body" id="docs-body">
-      <span style="color:var(--accent);font-size:0.56rem">MUSIC REHEARSAL v4.6</span>
+      <span style="color:var(--accent);font-size:0.56rem">MUSIC REHEARSAL v4.7</span>
 
       <div class="doc-h">WORKFLOW</div>
       1. Select a piece from the Library — the file picker opens automatically.<br>
@@ -453,6 +452,8 @@ let currentPieceName = '';
 let previewingSegId = null;
 let activeLoopId = null;
 let currentSpeed   = 1.0;
+let trimOffset     = 0;      // seconds of silence trimmed from file start
+let leadIn         = 0.5;    // lead-in before playback starts (seconds)
 let loopStart      = null;
 let loopEnd        = null;
 
@@ -565,19 +566,16 @@ function onAudioFile(file) {
   audioEl.playbackRate = currentSpeed;
   audioEl.load();
 
-  // Also decode via AudioContext for waveform rendering
+  // Decode via AudioContext for waveform rendering + trim detection
   const reader = new FileReader();
   reader.onload = async ev => {
     try {
       if (!audioContext) audioContext = new (window.AudioContext||window.webkitAudioContext)();
       const raw = await audioContext.decodeAudioData(ev.target.result.slice(0));
-      const trimEnabled = document.getElementById('trim-silence').checked;
-      audioBuffer   = trimEnabled ? trimEdges(raw) : raw;
+      const { buffer: trimmed, offsetSecs } = trimEdges(raw);
+      audioBuffer  = trimmed;
+      trimOffset   = offsetSecs;
       audioDuration = audioBuffer.duration;
-      // Also set duration on audio element once metadata loads
-      audioEl.addEventListener('loadedmetadata', () => {
-        if (!audioDuration) audioDuration = audioEl.duration;
-      }, {once:true});
 
       viewStart = 0; viewEnd = audioDuration; zoomLevel = 1;
       updateZoomLabel();
@@ -609,7 +607,8 @@ function trimEdges(buf) {
   for (let c = 0; c < buf.numberOfChannels; c++) {
     out.getChannelData(c).set(buf.getChannelData(c).subarray(head, tail+1));
   }
-  return out;
+  const offsetSecs = head / buf.sampleRate;
+  return { buffer: out, offsetSecs };
 }
 
 // ══════════════════════════════════════════════
@@ -816,17 +815,20 @@ function _startPlayback(offset, stopAfterSecs=null) {
   loopStart = null; loopEnd = null;
   cancelAnimationFrame(animFrame);
   playGen++;
-  audioEl.currentTime = offset;
+  // Apply lead-in then trimOffset for actual file position
+  const displayStart = Math.max(0, offset - leadIn);
+  const fileTime = trimOffset + displayStart;
+  audioEl.currentTime = fileTime;
   audioEl.playbackRate = currentSpeed;
   audioEl.preservesPitch = true;
   audioEl.play().catch(e => console.warn('Audio play failed:', e));
-  playOffset = offset; playCtxStart = performance.now() / 1000;
-  isPlaying = true; queuePoint = offset; playStartedAt = Date.now();
+  playOffset = displayStart; playCtxStart = performance.now() / 1000;
+  isPlaying = true; queuePoint = displayStart; playStartedAt = Date.now();
   if (stopAfterSecs !== null) {
     const myGen = playGen;
     setTimeout(() => {
       if (playGen === myGen && isPlaying) _pause();
-    }, stopAfterSecs * 1000 / currentSpeed);
+    }, (stopAfterSecs + leadIn) * 1000 / currentSpeed);
   }
   document.getElementById('btn-play').textContent = '⏸ Pause';
   document.getElementById('btn-play').classList.add('active');
@@ -856,7 +858,7 @@ function _killSource() {
 
 function _currentAudioTime() {
   if (!audioEl || !isPlaying) return playOffset;
-  return Math.min(audioEl.currentTime, audioDuration);
+  return Math.min(Math.max(0, audioEl.currentTime - trimOffset), audioDuration);
 }
 
 function _updateDisplay(t) {
@@ -914,7 +916,7 @@ function _autoScroll(t) {
 function skipAudio(secs) {
   const t = Math.max(0, Math.min(audioDuration, _currentAudioTime()+secs));
   if (isPlaying) {
-    audioEl.currentTime = t;
+    audioEl.currentTime = trimOffset + t;
     playOffset = t; queuePoint = t;
   } else { playOffset = t; queuePoint = t; _updateDisplay(t); drawOverview(); }
 }
@@ -922,7 +924,7 @@ function skipAudio(secs) {
 function goToStart() {
   if (isPlaying) _pause();
   playOffset = 0; queuePoint = 0;
-  if (audioEl) audioEl.currentTime = 0;
+  if (audioEl) audioEl.currentTime = trimOffset;
   _updateDisplay(0);
   const win = viewEnd - viewStart;
   viewStart = 0; viewEnd = Math.min(audioDuration, win);
@@ -1261,14 +1263,17 @@ function _startLooping(startTime, endTime) {
   if (!audioEl || !audioBuffer) return;
   cancelAnimationFrame(animFrame);
   playGen++;
-  loopStart = startTime;
-  loopEnd   = endTime;
-  audioEl.currentTime = startTime;
+  // Store loop boundary in file time (for _onTimeUpdate seamless repeat)
+  loopStart = trimOffset + startTime;
+  loopEnd   = trimOffset + endTime;
+  // Apply lead-in for initial start only
+  const displayStart = Math.max(0, startTime - leadIn);
+  audioEl.currentTime = trimOffset + displayStart;
   audioEl.playbackRate = currentSpeed;
   audioEl.preservesPitch = true;
   audioEl.play().catch(e => console.warn('Loop play failed:', e));
-  playOffset = startTime; isPlaying = true;
-  queuePoint = startTime; playStartedAt = Date.now();
+  playOffset = displayStart; isPlaying = true;
+  queuePoint = displayStart; playStartedAt = Date.now();
   document.getElementById('btn-play').textContent = '⏸ Pause';
   document.getElementById('btn-play').classList.add('active');
   animFrame = requestAnimationFrame(_animLoop);
@@ -1788,6 +1793,31 @@ function undo() {
 // ══════════════════════════════════════════════
 // PIECE NAME
 // ══════════════════════════════════════════════
+function _loadLeadIn() {
+  const stored = parseFloat(localStorage.getItem('mr_leadIn') || '0.5');
+  leadIn = isFinite(stored) ? Math.max(0, Math.min(2, stored)) : 0.5;
+  _updateLeadInDisplay();
+}
+
+function _saveLeadIn() {
+  localStorage.setItem('mr_leadIn', leadIn);
+}
+
+function _updateLeadInDisplay() {
+  const el = document.getElementById('lead-in-val');
+  if (el) el.textContent = leadIn.toFixed(2).replace(/\.?0+$/, '') + 's';
+}
+
+function stepLeadIn(dir) {
+  const STEPS = [0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
+  const idx = STEPS.findIndex(s => Math.abs(s - leadIn) < 0.01);
+  const cur = idx !== -1 ? idx : STEPS.findIndex(s => s >= leadIn);
+  const newIdx = Math.max(0, Math.min(STEPS.length-1, (idx !== -1 ? idx : cur) + dir));
+  leadIn = STEPS[newIdx];
+  _updateLeadInDisplay();
+  _saveLeadIn();
+}
+
 function onNotesInput() {
   saveSession();
 }
@@ -1989,6 +2019,7 @@ document.addEventListener('keydown', e => {
 loadSession();
 renderSessionsList();
 _updatePieceTitle();
+_loadLeadIn();
 window.addEventListener('resize', drawOverview);
 </script>
 </body>
