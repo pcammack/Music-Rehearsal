@@ -124,10 +124,10 @@ input[type=file]{display:none}
 .btn-sm.primary:hover{background:var(--accent-d)}
 .btn-sm.active{background:var(--accent);border-color:var(--accent);color:var(--bg)}
 
-/* Loop rows: span | dur | ▶ | L | ✕ */
+/* Loop rows: span | dur | ▶ | ⟳ | 🎯 | ✕ */
 .loop-col-header,.loop-row{
   display:grid;
-  grid-template-columns:1fr 50px 22px 22px 22px;
+  grid-template-columns:1fr 50px 22px 22px 22px 22px;
   gap:0.3rem;align-items:center}
 .loop-col-header{font-size:0.42rem;color:var(--text-faint);letter-spacing:0.1em;
   text-transform:uppercase;padding-bottom:0.3rem;border-bottom:1px solid var(--border);
@@ -183,7 +183,25 @@ input[type=file]{display:none}
 .lib-del:hover{color:var(--red)}
 .lib-empty{font-size:0.5rem;color:var(--text-faint);padding:0.4rem 0;text-align:center}
 
-/* ── COLLAPSIBLE (docs only) ── */
+/* ── TEMPO TRAINING ── */
+.tempo-train-panel{background:var(--bg2);border:1px solid var(--border);
+  padding:0.65rem 0.8rem;margin-top:0.75rem;display:none}
+.tempo-train-panel.visible{display:block}
+.tempo-train-stops{display:flex;flex-direction:column;gap:0.25rem;margin-bottom:0.6rem}
+.tempo-train-row{display:grid;grid-template-columns:20px 60px 1fr 80px;
+  gap:0.4rem;align-items:center;padding:0.15rem 0}
+.tempo-train-row.active-step{background:var(--bg3);border-left:2px solid var(--accent);padding-left:0.3rem}
+.tempo-train-pct{font-size:0.5rem;color:var(--text)}
+.tempo-train-reps{display:flex;align-items:center;gap:0.25rem}
+.rep-count{font-size:0.5rem;color:var(--text);min-width:1rem;text-align:center}
+.rep-btn{background:none;border:1px solid var(--border);color:var(--text-faint);
+  font-size:0.44rem;padding:0.05rem 0.3rem;cursor:pointer;line-height:1.4;
+  font-family:'JetBrains Mono',monospace;transition:all 0.15s}
+.rep-btn:hover{border-color:var(--accent);color:var(--accent)}
+.tempo-train-progress{font-size:0.46rem;color:var(--accent);text-align:right;white-space:nowrap}
+.tempo-train-controls{display:flex;align-items:center;gap:0.4rem;margin-top:0.5rem;
+  padding-top:0.4rem;border-top:1px solid var(--border)}
+.tempo-train-status{font-size:0.46rem;color:var(--text-faint);margin-left:auto}
 .collapsible-hdr{width:100%;background:none;border:none;padding:0.45rem 0;
   display:flex;justify-content:space-between;align-items:center;cursor:pointer;
   font-family:'JetBrains Mono',monospace;font-size:0.48rem;letter-spacing:0.14em;
@@ -230,7 +248,7 @@ input[type=file]{display:none}
 
 <header>
   <span class="app-name">Music Rehearsal</span>
-  <span class="app-ver">v4.5</span>
+  <span class="app-ver">v4.6</span>
 </header>
 
 <div class="piece-title-bar">
@@ -261,15 +279,17 @@ input[type=file]{display:none}
         <span class="player-time" id="player-time">0:00.0 / 0:00.0</span>
       </div>
       <div class="player-right">
-        <span class="transport-label">Speed</span>
+        <span class="transport-label">Tempo</span>
+        <button class="btn-player" onclick="stepTempo(-1)" style="padding:0.22rem 0.5rem">−</button>
         <input type="range" class="speed-slider" id="speed-slider"
                min="0.5" max="1.2" step="0.01" value="1.0" oninput="onSpeedChange(this.value)">
+        <button class="btn-player" onclick="stepTempo(1)" style="padding:0.22rem 0.5rem">+</button>
         <span class="speed-val" id="speed-val">100%</span>
         <button class="btn-player" onclick="resetSpeed()" style="padding:0.22rem 0.42rem;font-size:0.48rem">↺</button>
       </div>
     </div>
     <div class="player-hint">
-      SPACE play/pause · M mark · P play to next · ← −5s · → +10s · Home start · click to seek · drag markers · scroll to zoom
+      SPACE play/pause · M mark · P play to next · ← −5s · → +10s · Home start · click to seek · drag markers · scroll to zoom · − + step tempo
     </div>
   </div>
 
@@ -309,6 +329,21 @@ input[type=file]{display:none}
           <span>Range</span><span>Dur</span><span>▶</span><span>⟳</span><span>✕</span>
         </div>
         <div id="seg-list"></div>
+      </div>
+
+      <!-- Tempo Training (shown when loop is active) -->
+      <div class="tempo-train-panel" id="tempo-train-panel">
+        <div class="section-divider">
+          <span>Tempo Training</span>
+          <button class="btn-sm" onclick="closeTempoTraining()" style="font-size:0.4rem;padding:0.1rem 0.35rem">✕</button>
+        </div>
+        <div class="tempo-train-stops" id="tempo-train-stops"></div>
+        <div class="tempo-train-controls">
+          <button class="btn-sm primary" id="tt-start-btn" onclick="tempoTrainStart()">▶ Start</button>
+          <button class="btn-sm" id="tt-pause-btn" onclick="tempoTrainPause()" style="display:none">⏸ Pause</button>
+          <button class="btn-sm" id="tt-stop-btn" onclick="tempoTrainStop()" style="display:none">■ Stop</button>
+          <span class="tempo-train-status" id="tt-status"></span>
+        </div>
       </div>
 
     </div>
@@ -367,7 +402,7 @@ input[type=file]{display:none}
       <span>Documentation</span><span id="docs-arrow">▸</span>
     </button>
     <div class="collapsible-body" id="docs-body">
-      <span style="color:var(--accent);font-size:0.56rem">MUSIC REHEARSAL v4.5</span>
+      <span style="color:var(--accent);font-size:0.56rem">MUSIC REHEARSAL v4.6</span>
 
       <div class="doc-h">WORKFLOW</div>
       1. Select a piece from the Library — the file picker opens automatically.<br>
@@ -444,6 +479,9 @@ let viewStart  = 0;
 let viewEnd    = 0;
 let zoomLevel  = 1;
 let isDragging = false;
+let isPanning  = false;
+let panStartX  = 0;
+let panStartViewStart = 0;
 let dragStartX = 0;
 let lastDragX  = 0;
 let dragStartTime  = 0;
@@ -903,16 +941,20 @@ function playToNextMarker() {
 
 function onSpeedChange(v) {
   currentSpeed = parseFloat(v);
-  // Snap to nearest defined stop
   const STOPS = [0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1.0, 1.05, 1.1, 1.2];
   const snapped = STOPS.reduce((a,b) => Math.abs(b-currentSpeed)<Math.abs(a-currentSpeed)?b:a);
   currentSpeed = snapped;
   document.getElementById('speed-slider').value = currentSpeed;
   document.getElementById('speed-val').textContent = `${Math.round(currentSpeed*100)}%`;
-  if (audioEl) {
-    audioEl.playbackRate = currentSpeed;
-    audioEl.preservesPitch = true;
-  }
+  if (audioEl) { audioEl.playbackRate = currentSpeed; audioEl.preservesPitch = true; }
+}
+
+function stepTempo(dir) {
+  const STOPS = [0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1.0, 1.05, 1.1, 1.2];
+  const idx = STOPS.indexOf(currentSpeed);
+  const cur = idx !== -1 ? idx : STOPS.findIndex(s => s >= currentSpeed);
+  const newIdx = Math.max(0, Math.min(STOPS.length-1, (idx !== -1 ? idx : cur) + dir));
+  onSpeedChange(STOPS[newIdx]);
 }
 
 function resetSpeed() {
@@ -1182,6 +1224,7 @@ function renderLoops() {
       <span class="loop-dur">${fmtTime(dur)}</span>
       <button class="loop-btn" onclick="previewSegment(${seg.id})" title="Preview">▶</button>
       <button class="loop-btn${isActive?' loop-active':''}" onclick="toggleLoop(${seg.id})" title="Loop">⟳</button>
+      <button class="loop-btn${isActive?' loop-active':''}" onclick="openTempoTraining(${seg.id})" title="Tempo training" style="${isActive?'':'opacity:0.3'}">🎯</button>
       <button class="loop-btn delete" onclick="removeSegment(${seg.id})" title="Remove">✕</button>
     </div>`;
   }).filter(Boolean).join('');
@@ -1577,6 +1620,149 @@ function importLibraryJSON(file) {
 }
 
 // ══════════════════════════════════════════════
+// TEMPO TRAINING
+// ══════════════════════════════════════════════
+const TT_STOPS = [0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1.0, 1.05, 1.1, 1.2];
+let ttConfig    = TT_STOPS.map(s => ({ pct: s, enabled: s >= 0.8 && s <= 1.0, reps: 2 }));
+let ttState     = null; // null = idle, else { stepIdx, repsDone, paused }
+let ttLoopId    = null;
+let ttRepTimeout = null;
+
+function openTempoTraining(loopId) {
+  ttLoopId = loopId;
+  if (!activeLoopId || activeLoopId !== loopId) toggleLoop(loopId);
+  renderTempoTrainPanel();
+  document.getElementById('tempo-train-panel').classList.add('visible');
+}
+
+function closeTempoTraining() {
+  tempoTrainStop();
+  document.getElementById('tempo-train-panel').classList.remove('visible');
+  ttLoopId = null;
+}
+
+function renderTempoTrainPanel() {
+  const container = document.getElementById('tempo-train-stops');
+  const isRunning = ttState && !ttState.paused;
+  container.innerHTML = ttConfig.map((c, i) => {
+    const isStep = ttState && ttState.stepIdx === i;
+    return `<div class="tempo-train-row${isStep?' active-step':''}">
+      <input type="checkbox" ${c.enabled?'checked':''} style="accent-color:var(--accent)"
+        onchange="ttToggleStop(${i},this.checked)" ${isRunning?'disabled':''}>
+      <span class="tempo-train-pct">${Math.round(c.pct*100)}%</span>
+      <div></div>
+      <div class="tempo-train-reps">
+        <button class="rep-btn" onclick="ttChangeReps(${i},-1)" ${isRunning?'disabled':''}>−</button>
+        <span class="rep-count" id="tt-rep-${i}">${c.reps}×</span>
+        <button class="rep-btn" onclick="ttChangeReps(${i},1)" ${isRunning?'disabled':''}>+</button>
+        ${isStep ? `<span class="tempo-train-progress" id="tt-prog">${ttState.repsDone+1} of ${c.reps}</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function ttToggleStop(idx, val) {
+  ttConfig[idx].enabled = val;
+}
+
+function ttChangeReps(idx, delta) {
+  ttConfig[idx].reps = Math.max(1, Math.min(10, ttConfig[idx].reps + delta));
+  document.getElementById(`tt-rep-${idx}`).textContent = `${ttConfig[idx].reps}×`;
+}
+
+function tempoTrainStart() {
+  const seg = segments.find(s => s.id === ttLoopId);
+  if (!seg || !audioBuffer) return;
+  const enabledSteps = ttConfig.map((c,i) => ({...c, i})).filter(c => c.enabled);
+  if (!enabledSteps.length) return;
+
+  ttState = { stepIdx: enabledSteps[0].i, repsDone: 0, paused: false, enabledSteps };
+  document.getElementById('tt-start-btn').style.display = 'none';
+  document.getElementById('tt-pause-btn').style.display = '';
+  document.getElementById('tt-stop-btn').style.display = '';
+  _ttRunStep();
+}
+
+function _ttRunStep() {
+  if (!ttState || ttState.paused) return;
+  const { stepIdx, repsDone, enabledSteps } = ttState;
+  const cfg = ttConfig[stepIdx];
+  const seg = segments.find(s => s.id === ttLoopId);
+  if (!seg) { tempoTrainStop(); return; }
+  const sm = markers.find(m => m.id === seg.startId);
+  const em = markers.find(m => m.id === seg.endId);
+  if (!sm || !em) { tempoTrainStop(); return; }
+
+  // Set tempo
+  onSpeedChange(cfg.pct);
+
+  // Update status
+  document.getElementById('tt-status').textContent =
+    `${Math.round(cfg.pct*100)}% — rep ${repsDone+1} of ${cfg.reps}`;
+  renderTempoTrainPanel();
+
+  // Play one rep
+  const dur = (em.time - sm.time) / cfg.pct;
+  if (isPlaying) { if (audioEl) audioEl.pause(); isPlaying = false; }
+  _startLooping(sm.time, em.time);
+
+  // Schedule advance after this rep
+  ttRepTimeout = setTimeout(() => {
+    if (!ttState || ttState.paused) return;
+    ttState.repsDone++;
+    if (ttState.repsDone >= ttConfig[ttState.stepIdx].reps) {
+      // Advance to next enabled step
+      const curEnabledIdx = enabledSteps.findIndex(s => s.i === ttState.stepIdx);
+      if (curEnabledIdx < enabledSteps.length - 1) {
+        ttState.stepIdx = enabledSteps[curEnabledIdx + 1].i;
+        ttState.repsDone = 0;
+        _ttRunStep();
+      } else {
+        // Done
+        tempoTrainStop();
+        document.getElementById('tt-status').textContent = '✓ Complete';
+        renderTempoTrainPanel();
+      }
+    } else {
+      _ttRunStep();
+    }
+  }, dur * 1000 + 200); // +200ms gap between reps
+}
+
+function tempoTrainPause() {
+  if (!ttState) return;
+  if (ttState.paused) {
+    ttState.paused = false;
+    document.getElementById('tt-pause-btn').textContent = '⏸ Pause';
+    _ttRunStep();
+  } else {
+    ttState.paused = true;
+    clearTimeout(ttRepTimeout);
+    if (audioEl) audioEl.pause();
+    isPlaying = false;
+    document.getElementById('tt-pause-btn').textContent = '▶ Resume';
+    document.getElementById('tt-status').textContent = 'Paused';
+  }
+}
+
+function tempoTrainStop() {
+  clearTimeout(ttRepTimeout);
+  ttState = null;
+  if (isPlaying) _pause();
+  resetSpeed();
+  const startBtn = document.getElementById('tt-start-btn');
+  const pauseBtn = document.getElementById('tt-pause-btn');
+  const stopBtn  = document.getElementById('tt-stop-btn');
+  if (startBtn) startBtn.style.display = '';
+  if (pauseBtn) { pauseBtn.style.display = 'none'; pauseBtn.textContent = '⏸ Pause'; }
+  if (stopBtn)  stopBtn.style.display = 'none';
+  const status = document.getElementById('tt-status');
+  if (status) status.textContent = '';
+  renderTempoTrainPanel();
+}
+
+// ══════════════════════════════════════════════
+// UNDO
 // ══════════════════════════════════════════════
 function pushUndo() {
   undoStack.push(JSON.stringify({
@@ -1643,14 +1829,24 @@ function _hitTestMarker(mouseX, canvasWidth) {
       if (isPlaying) _pause();
     } else {
       dragMarkerState = null;
-      isDragging = true;
-      dragStartX = e.clientX; lastDragX = e.clientX;
-      dragStartTime = _timeFromOverviewX(e);
-      canvas.classList.add('dragging');
-      dragWasPlaying = isPlaying;
-      if (isPlaying) _pause();
-      const t = Math.max(0, Math.min(audioDuration, dragStartTime));
-      playOffset = t; queuePoint = t; _updateDisplay(t); drawOverview();
+      if (zoomLevel > 1) {
+        // Pan mode when zoomed in
+        isPanning = true;
+        panStartX = e.clientX;
+        panStartViewStart = viewStart;
+        canvas.classList.add('dragging');
+        canvas.style.cursor = 'grab';
+      } else {
+        // Seek mode at 1x zoom
+        isDragging = true;
+        dragStartX = e.clientX; lastDragX = e.clientX;
+        dragStartTime = _timeFromOverviewX(e);
+        canvas.classList.add('dragging');
+        dragWasPlaying = isPlaying;
+        if (isPlaying) _pause();
+        const t = Math.max(0, Math.min(audioDuration, dragStartTime));
+        playOffset = t; queuePoint = t; _updateDisplay(t); drawOverview();
+      }
     }
   });
 
@@ -1688,6 +1884,17 @@ function _hitTestMarker(mouseX, canvasWidth) {
           tooltip.style.top  = (rect.top + window.scrollY - 4) + 'px';
         }
       }
+    } else if (isPanning) {
+      e.preventDefault();
+      const vDur = viewEnd - viewStart;
+      const dx = e.clientX - panStartX;
+      const dt = dx * (vDur / rect.width);
+      let newStart = panStartViewStart - dt;
+      newStart = Math.max(0, Math.min(audioDuration - vDur, newStart));
+      viewStart = newStart;
+      viewEnd   = newStart + vDur;
+      tooltip.style.display = 'none';
+      drawOverview();
     } else if (isDragging) {
       e.preventDefault();
       lastDragX = e.clientX;
@@ -1727,6 +1934,10 @@ function _hitTestMarker(mouseX, canvasWidth) {
         playOffset = snapTime; queuePoint = snapTime;
         _updateDisplay(snapTime); drawOverview();
       }
+    } else if (isPanning) {
+      isPanning = false;
+      canvas.classList.remove('dragging');
+      canvas.style.cursor = 'crosshair';
     } else if (isDragging) {
       isDragging = false;
       canvas.classList.remove('dragging');
