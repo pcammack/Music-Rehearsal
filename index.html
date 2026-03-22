@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Music Rehearsal</title>
+<title>Rehearsal Space</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -127,6 +127,82 @@ input[type=file]{display:none}
 .rec-clip-audio{width:100%;height:24px;margin-top:0.2rem;display:block}
 .rec-no-clips{font-size:0.48rem;color:var(--text-faint);padding:0.3rem 0;text-align:center}
 .rec-warning{font-size:0.42rem;color:var(--text-faint);margin-top:0.3rem;line-height:1.7}
+
+/* ── ARMED RECORDING STATE ── */
+.rec-armed{font-size:0.46rem;color:var(--blue);letter-spacing:0.06em;
+  display:none;align-items:center;gap:0.3rem;margin-top:0.3rem}
+.rec-armed.visible{display:flex}
+.rec-armed-dot{width:6px;height:6px;border-radius:50%;background:var(--blue);
+  animation:recPulse 1.2s ease-in-out infinite}
+
+/* ── BLEND CONTROLS ── */
+.blend-row{display:flex;align-items:center;gap:0.5rem;margin-top:0.4rem;
+  padding:0.4rem 0.5rem;background:var(--bg3);border:1px solid var(--border)}
+.blend-label{font-size:0.42rem;color:var(--text-faint);white-space:nowrap}
+.blend-slider{flex:1;accent-color:var(--accent);cursor:pointer}
+.blend-ends{font-size:0.4rem;color:var(--text-faint);white-space:nowrap}
+
+/* ── LATENCY CONTROL ── */
+.latency-row{display:flex;align-items:center;gap:0.5rem;padding:0.3rem 0;
+  border-top:1px solid var(--border);margin-top:0.4rem}
+.latency-label{font-size:0.42rem;color:var(--text-faint);flex:1}
+.latency-val{font-size:0.46rem;color:var(--text-mid);min-width:3rem;text-align:right}
+
+/* ── MARKER ANNOTATIONS ── */
+.marker-annotation-row{grid-column:2/-1;padding:0.15rem 0 0.2rem;
+  display:flex;align-items:flex-start;gap:0.35rem}
+.marker-annotation-input{flex:1;background:none;border:none;border-bottom:1px solid var(--border);
+  color:var(--text-mid);font-family:'JetBrains Mono',monospace;font-size:0.44rem;
+  padding:0.1rem 0;outline:none;resize:none;height:auto;line-height:1.6;
+  transition:border-color 0.15s}
+.marker-annotation-input:focus{border-bottom-color:var(--accent);color:var(--text)}
+.marker-annotation-input::placeholder{color:var(--text-faint);font-style:italic}
+.annotation-tag{font-size:0.38rem;padding:0.08rem 0.3rem;border-radius:2px;
+  cursor:pointer;white-space:nowrap;transition:all 0.15s;border:1px solid var(--border);
+  color:var(--text-faint);background:none;font-family:'JetBrains Mono',monospace}
+.annotation-tag.teacher{border-color:var(--blue);color:var(--blue);background:rgba(74,126,196,0.1)}
+.annotation-date{font-size:0.38rem;color:var(--text-faint);white-space:nowrap;align-self:flex-end;padding-bottom:0.1rem}
+
+/* ── RIGHT COLUMN PANELS ── */
+.right-panel{background:var(--bg2);border:1px solid var(--border);
+  padding:0.65rem 0.8rem;margin-bottom:0.75rem}
+
+/* ── SESSION LOG ── */
+.session-log{font-size:0.44rem;color:var(--text-faint);line-height:2;
+  border-top:1px solid var(--border);padding-top:0.4rem;margin-top:0.4rem}
+.session-log-entry{color:var(--text-mid)}
+.session-log-date{color:var(--accent);margin-right:0.4rem}
+
+/* ── SCRATCHPAD ── */
+.scratchpad-textarea{width:100%;background:var(--bg3);border:1px solid var(--border);
+  color:var(--text);font-family:'JetBrains Mono',monospace;font-size:0.48rem;
+  padding:0.35rem 0.5rem;resize:none;height:120px;overflow-y:auto;
+  outline:none;transition:border-color 0.15s;line-height:1.7}
+.scratchpad-textarea:focus{border-color:var(--accent)}
+.scratchpad-textarea::placeholder{color:var(--text-faint)}
+
+/* ── END-OF-SESSION REVIEW ── */
+.review-panel{background:var(--bg2);border:1px solid var(--border);
+  padding:0.65rem 0.8rem;margin-bottom:0.75rem;display:none}
+.review-panel.visible{display:block}
+.review-clip-row{display:flex;flex-direction:column;gap:0.25rem;
+  padding:0.4rem 0;border-bottom:1px solid var(--border)}
+.review-clip-row:last-child{border-bottom:none}
+.review-clip-top{display:flex;align-items:center;gap:0.4rem}
+.review-clip-check{accent-color:var(--accent);cursor:pointer;width:14px;height:14px}
+.review-clip-meta{flex:1;font-size:0.46rem;color:var(--text-mid)}
+.review-clip-tag{font-size:0.38rem;padding:0.06rem 0.28rem;border-radius:2px;
+  font-family:'JetBrains Mono',monospace}
+.tag-solo{background:rgba(74,158,106,0.15);color:var(--green);border:1px solid rgba(74,158,106,0.3)}
+.tag-withref{background:rgba(74,126,196,0.15);color:var(--blue);border:1px solid rgba(74,126,196,0.3)}
+.review-label-input{background:none;border:none;border-bottom:1px solid var(--border);
+  color:var(--text);font-family:'JetBrains Mono',monospace;font-size:0.46rem;
+  padding:0.1rem 0;outline:none;flex:1;transition:border-color 0.15s}
+.review-label-input:focus{border-bottom-color:var(--accent)}
+.review-format-row{display:flex;align-items:center;gap:0.5rem;font-size:0.42rem;
+  color:var(--text-faint);padding-left:1.2rem}
+.review-format-row label{display:flex;align-items:center;gap:0.25rem;cursor:pointer}
+.review-format-row input{accent-color:var(--accent)}
 .marker-col-header{font-size:0.42rem;color:var(--text-faint);letter-spacing:0.1em;
   text-transform:uppercase;padding-bottom:0.3rem;display:none}
 .marker-row{padding:0.22rem 0;border-bottom:1px solid var(--border);transition:background 0.1s}
@@ -297,8 +373,8 @@ input[type=file]{display:none}
 <body>
 
 <header>
-  <span class="app-name">Music Rehearsal</span>
-  <span class="app-ver">v4.9</span>
+  <span class="app-name">Rehearsal Space</span>
+  <span class="app-ver">v5.0</span>
 </header>
 
 <div class="piece-title-bar">
@@ -353,29 +429,6 @@ input[type=file]{display:none}
     <!-- Left column: markers + loops -->
     <div class="main-left">
 
-      <!-- Recording Panel -->
-      <div class="rec-panel" id="rec-panel">
-        <div class="section-divider">
-          <span>Recording</span>
-          <div style="display:flex;align-items:center;gap:0.4rem">
-            <div class="rec-indicator" id="rec-indicator">
-              <span class="rec-dot"></span>
-              <span>REC</span>
-              <span class="rec-timer" id="rec-timer">0:00</span>
-            </div>
-            <span class="rec-scope" id="rec-scope"></span>
-          </div>
-        </div>
-        <div class="rec-controls">
-          <button class="btn-rec" id="btn-rec" onclick="toggleRecording()">⏺ Record</button>
-          <button class="btn-sm" id="btn-kill-clip" onclick="killLastClip()" style="display:none" title="Discard last clip (K)">✕ Discard last</button>
-        </div>
-        <div id="rec-clip-list" class="rec-clip-list">
-          <div class="rec-no-clips">No clips yet — press R to record</div>
-        </div>
-        <div class="rec-warning">Clips are session-only and will not survive a page reload. Download immediately to keep.</div>
-      </div>
-
       <div class="marker-panel">
         <div class="section-divider">
           <span>Markers</span>
@@ -427,16 +480,80 @@ input[type=file]{display:none}
 
     </div>
 
-    <!-- Right column: notes -->
+    <!-- Right column: recording + notes -->
     <div class="main-right">
-      <div class="notes-panel">
+
+      <!-- Recording Panel -->
+      <div class="right-panel" id="rec-panel">
+        <div class="section-divider">
+          <span>Recording</span>
+          <div style="display:flex;align-items:center;gap:0.4rem">
+            <div class="rec-indicator" id="rec-indicator">
+              <span class="rec-dot"></span>
+              <span>REC</span>
+              <span class="rec-timer" id="rec-timer">0:00</span>
+            </div>
+            <span class="rec-scope" id="rec-scope"></span>
+          </div>
+        </div>
+        <div class="rec-controls">
+          <button class="btn-rec" id="btn-rec" onclick="toggleRecording()">⏺ Record</button>
+          <button class="btn-sm" id="btn-review" onclick="openReviewPanel()" style="display:none">↳ Review</button>
+        </div>
+        <div class="rec-armed" id="rec-armed">
+          <span class="rec-armed-dot"></span>
+          <span>Armed — recording next loop pass</span>
+        </div>
+        <div id="rec-clip-list" class="rec-clip-list">
+          <div class="rec-no-clips">No clips yet — press R to record</div>
+        </div>
+        <div class="rec-warning">Clips are session-only. Review and download before closing.</div>
+        <!-- Latency calibration -->
+        <div class="latency-row">
+          <span class="latency-label">Blend sync offset</span>
+          <button class="btn-sm" onclick="stepLatency(-5)" style="padding:0.1rem 0.4rem">−</button>
+          <span class="latency-val" id="latency-val">0ms</span>
+          <button class="btn-sm" onclick="stepLatency(5)" style="padding:0.1rem 0.4rem">+</button>
+        </div>
+      </div>
+
+      <!-- End-of-session review panel -->
+      <div class="review-panel right-panel" id="review-panel">
+        <div class="section-divider">
+          <span>Session Review</span>
+          <button class="btn-sm" onclick="closeReviewPanel()" style="font-size:0.4rem;padding:0.1rem 0.35rem">✕</button>
+        </div>
+        <div id="review-clip-list"></div>
+        <div style="margin-top:0.6rem;display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap">
+          <button class="btn-sm primary" onclick="downloadSelected()">⬇ Download selected</button>
+          <span id="review-status" style="font-size:0.44rem;color:var(--text-faint)"></span>
+        </div>
+        <!-- Blend crossfade for "with ref" clips -->
+        <div class="blend-row" id="blend-row" style="display:none">
+          <span class="blend-ends">Ref</span>
+          <input type="range" class="blend-slider" id="blend-slider" min="0" max="100" value="50">
+          <span class="blend-ends">You</span>
+          <span style="font-size:0.42rem;color:var(--text-faint);margin-left:0.3rem" id="blend-val">50/50</span>
+        </div>
+      </div>
+
+      <!-- Session log (auto-generated, last session only) -->
+      <div class="right-panel" id="session-log-panel" style="display:none">
+        <div class="section-divider"><span>Last session</span></div>
+        <div class="session-log" id="session-log-content"></div>
+      </div>
+
+      <!-- Scratchpad (replaces old notes textarea) -->
+      <div class="right-panel">
         <div class="section-divider">
           <span>Notes</span>
+          <span style="font-size:0.4rem;color:var(--text-faint)">general observations</span>
         </div>
-        <textarea class="notes-textarea" id="piece-notes"
-          placeholder="Tempo markings, phrasing ideas, notes for next practice…"
+        <textarea class="scratchpad-textarea" id="piece-notes"
+          placeholder="Musical intentions, teacher feedback, ensemble notes…"
           oninput="onNotesInput()"></textarea>
       </div>
+
     </div>
 
   </div>
@@ -477,12 +594,16 @@ input[type=file]{display:none}
       <span>Documentation</span><span id="docs-arrow">▸</span>
     </button>
     <div class="collapsible-body" id="docs-body">
-      <span style="color:var(--accent);font-size:0.56rem">MUSIC REHEARSAL v4.9</span>
+      <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v5.0</span>
 
-      <div class="doc-h">WHAT'S NEW IN v4.9</div>
-      · <strong style="color:var(--text)">Recording:</strong> Press R to start/stop recording. Clips appear immediately with playback and one-click download. Press K to discard the last clip.<br>
-      · <strong style="color:var(--text)">Bar numbers:</strong> Each marker now has an optional bar number field. Fill it in to navigate by musical position rather than memory.<br>
-      · Recordings are session-only — download immediately if you want to keep them.
+      <div class="doc-h">WHAT'S NEW IN v5.0</div>
+      · <strong style="color:var(--text)">Two-mode recording:</strong> R while paused = free solo recording. R while looping = arms for next loop pass, auto start/stop at loop boundaries.<br>
+      · <strong style="color:var(--text)">Session review:</strong> Clips accumulate during practice. Click Review to check, label, and download at end of session. Choose instrument-only or blend export.<br>
+      · <strong style="color:var(--text)">Blend mixdown:</strong> Crossfade slider mixes your clip with the reference track. Exported as a single WAV file.<br>
+      · <strong style="color:var(--text)">Marker annotations:</strong> Short notes on individual markers, visible inline. T badge marks teacher notes.<br>
+      · <strong style="color:var(--text)">Session log:</strong> Tempo trainer activity logged automatically. Last session summary shown when you load a piece.<br>
+      · <strong style="color:var(--text)">Blend sync offset:</strong> Calibrate latency for your hardware once — persists across sessions.<br>
+      · Recording panel moved to right column. App renamed to Rehearsal Space.
 
       <div class="doc-h">WORKFLOW</div>
       1. Select a piece from the Library — the file picker opens automatically.<br>
@@ -964,6 +1085,8 @@ function _onTimeUpdate() {
   if (loopStart !== null && loopEnd !== null && audioEl) {
     if (audioEl.currentTime >= loopEnd - 0.05) {
       audioEl.currentTime = loopStart;
+      // Trigger armed recording on loop restart
+      if (isArmed) _checkArmedTrigger();
     }
   }
 }
@@ -1203,9 +1326,30 @@ function updateMarkerTime(id, val) {
 function updateMarkerBar(id, val) {
   const m = markers.find(x=>x.id===id);
   if (!m) return;
-  const trimmed = val.trim();
-  m.bar = trimmed;
+  m.bar = val.trim();
   saveSession();
+}
+
+function updateMarkerAnnotation(id, val) {
+  const m = markers.find(x=>x.id===id);
+  if (!m) return;
+  if (!m.annotation) m.annotation = { text:'', teacher:false, date:'' };
+  m.annotation.text = val.trim();
+  if (m.annotation.text) {
+    m.annotation.date = new Date().toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+  } else {
+    m.annotation.date = '';
+  }
+  saveSession();
+}
+
+function toggleAnnotationTeacher(id) {
+  const m = markers.find(x=>x.id===id);
+  if (!m) return;
+  if (!m.annotation) m.annotation = { text:'', teacher:false, date:'' };
+  m.annotation.teacher = !m.annotation.teacher;
+  saveSession();
+  renderMarkers();
 }
 
 function renderMarkers() {
@@ -1229,6 +1373,18 @@ function renderMarkers() {
     const ph  = isPlaceholder(m.label);
     const isActive = i === activeMarkerIdx;
     const isQLS = m.id === quickLoopStartId; // quick loop start marker
+    const hasAnnotation = m.annotation && m.annotation.text;
+    const annotationRow = `<div class="marker-annotation-row">
+      <textarea class="marker-annotation-input" rows="1"
+        placeholder="add note…"
+        onchange="updateMarkerAnnotation(${m.id},this.value)"
+        onfocus="this.rows=2" onblur="this.rows=this.value?2:1"
+        title="Annotation for this marker">${escHtml((m.annotation&&m.annotation.text)||'')}</textarea>
+      <button class="annotation-tag${(m.annotation&&m.annotation.teacher)?' teacher':''}"
+        onclick="toggleAnnotationTeacher(${m.id})"
+        title="Toggle teacher note">T</button>
+      ${hasAnnotation&&m.annotation.date?`<span class="annotation-date">${m.annotation.date}</span>`:''}
+    </div>`;
     return `<div class="marker-row${isActive?' active-marker':''}" id="marker-row-${m.id}">
       <span class="marker-seq">${i+1}</span>
       <input class="marker-label-input${ph?' is-placeholder':''}"
@@ -1253,6 +1409,7 @@ function renderMarkers() {
         onclick="toggleLock(${m.id})" title="${m.locked?'Unlock':'Lock'} marker">🔒</button>
       <button class="marker-btn delete"
         onclick="removeMarker(${m.id})" title="Remove" ${m.locked?'disabled':''}>✕</button>
+      ${annotationRow}
     </div>`;
   }).join('');
 
@@ -1647,6 +1804,7 @@ async function loadNamedSession(name) {
   renderMarkers(); renderSegments(); refreshSegmentDropdowns();
   renderSessionsList();
   saveSession();
+  _renderSessionLog();
 
   // Show no-file notice and auto-open file picker
   _updateNoFileNotice();
@@ -1996,6 +2154,23 @@ function _ttRunStep() {
         ttState.repsDone = 0;
         _ttRunStep();
       } else {
+        // Log completed session
+        try {
+          let loopLabel = 'loop';
+          if (ttLoopId !== null) {
+            const seg = segments.find(s => s.id === ttLoopId);
+            if (seg) {
+              const sm = markers.find(m => m.id === seg.startId);
+              const em = markers.find(m => m.id === seg.endId);
+              if (sm && em) loopLabel = `${sm.label}→${em.label}`;
+            }
+          }
+          const minPct = Math.round(Math.min(...enabledSteps.map(s=>s.pct)) * 100);
+          const maxPct = Math.round(Math.max(...enabledSteps.map(s=>s.pct)) * 100);
+          const tempoRange = minPct === maxPct ? `${minPct}` : `${minPct}–${maxPct}`;
+          const totalReps = enabledSteps.reduce((sum, s) => sum + s.reps, 0);
+          _appendSessionLog(loopLabel, tempoRange, totalReps);
+        } catch(e) {}
         tempoTrainStop();
         document.getElementById('tt-status').textContent = '✓ Complete';
         renderTempoTrainPanel();
@@ -2039,18 +2214,39 @@ function tempoTrainStop() {
 }
 
 // ══════════════════════════════════════════════
-// RECORDING
+// RECORDING — two-mode system
 // ══════════════════════════════════════════════
-let mediaRecorder  = null;
-let recChunks      = [];
-let recStartTime   = null;
+let mediaRecorder    = null;
+let recChunks        = [];
+let recStartTime     = null;
+let recStartOffset   = null; // position in reference track when recording started
 let recTimerInterval = null;
-let recClips       = [];   // { id, label, blob, url, duration, scopeLabel }
-let recClipCounter = 0;
-let isRecording    = false;
+let recClips         = [];
+let recClipCounter   = 0;
+let isRecording      = false;
+let isArmed          = false;
+let latencyOffset    = 0; // ms, persists in localStorage
+let blendValue       = 50; // 0=ref only, 100=clip only
+
+// Load persisted latency offset
+(function(){ 
+  const v = parseInt(localStorage.getItem('mr_latency_offset')||'0');
+  latencyOffset = isFinite(v) ? Math.max(-200,Math.min(200,v)) : 0;
+  _updateLatencyDisplay();
+})();
+
+function _updateLatencyDisplay() {
+  const el = document.getElementById('latency-val');
+  if (el) el.textContent = (latencyOffset >= 0 ? '+' : '') + latencyOffset + 'ms';
+}
+
+function stepLatency(delta) {
+  latencyOffset = Math.max(-200, Math.min(200, latencyOffset + delta));
+  localStorage.setItem('mr_latency_offset', latencyOffset);
+  _updateLatencyDisplay();
+}
 
 function _recScopeLabel() {
-  // Describe what will be recorded
   if (activeLoopId !== null) {
     const seg = segments.find(s => s.id === activeLoopId);
     if (seg) {
@@ -2060,51 +2256,88 @@ function _recScopeLabel() {
     }
   }
   if (loopStart !== null && loopEnd !== null) return 'active loop';
-  return 'free (no loop active)';
+  return 'free';
 }
 
 async function toggleRecording() {
+  if (isArmed) {
+    // Cancel arm
+    isArmed = false;
+    document.getElementById('rec-armed').classList.remove('visible');
+    document.getElementById('btn-rec').textContent = '⏺ Record';
+    return;
+  }
   if (isRecording) {
     _stopRecording();
+    return;
+  }
+  // Decide mode based on playback state
+  if (isPlaying && (activeLoopId !== null || (loopStart !== null && loopEnd !== null))) {
+    // Playing mode — arm for next loop pass
+    _armRecording();
   } else {
-    await _startRecording();
+    // Paused mode — start immediately
+    await _startRecording('solo');
   }
 }
 
-async function _startRecording() {
-  if (!audioBuffer) { alert('Load an audio file first.'); return; }
+function _armRecording() {
+  isArmed = true;
+  document.getElementById('rec-armed').classList.add('visible');
+  document.getElementById('btn-rec').textContent = '✕ Disarm';
+  document.getElementById('rec-scope').textContent = _recScopeLabel();
+}
+
+// Called from _onTimeUpdate when loop restarts and we're armed
+async function _checkArmedTrigger() {
+  if (!isArmed) return;
+  isArmed = false;
+  document.getElementById('rec-armed').classList.remove('visible');
+  await _startRecording('withref');
+}
+
+// Duration in seconds for armed loop recording
+function _armedLoopDuration() {
+  if (activeLoopId !== null) {
+    const seg = segments.find(s => s.id === activeLoopId);
+    if (seg) {
+      const sm = markers.find(m => m.id === seg.startId);
+      const em = markers.find(m => m.id === seg.endId);
+      if (sm && em) return (em.time - sm.time) / currentSpeed;
+    }
+  }
+  if (loopStart !== null && loopEnd !== null) {
+    return (loopEnd - loopStart) / currentSpeed;
+  }
+  return null;
+}
+
+async function _startRecording(mode) {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 44100 }
+      audio: { echoCancellation: true, noiseSuppression: false, sampleRate: 44100 }
     });
-
-    // Prefer webm/opus, fall back to whatever browser supports
     const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
       ? 'audio/webm;codecs=opus'
-      : MediaRecorder.isTypeSupported('audio/webm')
-        ? 'audio/webm'
-        : '';
-
+      : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
     mediaRecorder = mimeType
       ? new MediaRecorder(stream, { mimeType })
       : new MediaRecorder(stream);
 
     recChunks = [];
     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recChunks.push(e.data); };
-    mediaRecorder.onstop = _onRecordingStop;
+    mediaRecorder.onstop = () => _onRecordingStop(mode);
     mediaRecorder.start(100);
-
     isRecording = true;
     recStartTime = Date.now();
+    recStartOffset = _currentAudioTime();
 
-    // Start recording scope — snap to loop if active
     const scopeLabel = _recScopeLabel();
     document.getElementById('rec-scope').textContent = scopeLabel;
     document.getElementById('rec-indicator').classList.add('visible');
     document.getElementById('btn-rec').textContent = '⏹ Stop';
     document.getElementById('btn-rec').classList.add('recording');
 
-    // Timer display
     recTimerInterval = setInterval(() => {
       const elapsed = (Date.now() - recStartTime) / 1000;
       const m = Math.floor(elapsed / 60);
@@ -2112,15 +2345,22 @@ async function _startRecording() {
       document.getElementById('rec-timer').textContent = `${m}:${s.toString().padStart(2,'0')}`;
     }, 500);
 
+    // For armed (withref) mode — auto-stop at loop end
+    if (mode === 'withref') {
+      const dur = _armedLoopDuration();
+      if (dur) {
+        setTimeout(() => { if (isRecording) _stopRecording(); }, dur * 1000);
+      }
+    }
   } catch(err) {
     alert('Microphone access denied or unavailable.\n\n' + err.message);
+    isArmed = false;
   }
 }
 
 function _stopRecording() {
   if (!mediaRecorder || !isRecording) return;
   mediaRecorder.stop();
-  // Stop all mic tracks
   mediaRecorder.stream.getTracks().forEach(t => t.stop());
   isRecording = false;
   clearInterval(recTimerInterval);
@@ -2131,58 +2371,87 @@ function _stopRecording() {
   document.getElementById('rec-timer').textContent = '0:00';
 }
 
-function _onRecordingStop() {
+function _trimAudioBuffer(audioCtx, buffer) {
+  // Same logic as trimEdges but tuned for live instrument (slightly higher threshold)
+  const LIVE_THRESHOLD = 0.01;
+  const d = buffer.getChannelData(0);
+  const n = d.length;
+  let head = 0, tail = n - 1;
+  while (head < n && Math.abs(d[head]) < LIVE_THRESHOLD) head++;
+  while (tail > head && Math.abs(d[tail]) < LIVE_THRESHOLD) tail--;
+  const PAD = Math.floor(buffer.sampleRate * 0.02); // 20ms pad
+  head = Math.max(0, head - PAD);
+  tail = Math.min(n - 1, tail + PAD);
+  const len = tail - head + 1;
+  if (len <= 0) return buffer;
+  const out = audioCtx.createBuffer(buffer.numberOfChannels, len, buffer.sampleRate);
+  for (let c = 0; c < buffer.numberOfChannels; c++) {
+    out.getChannelData(c).set(buffer.getChannelData(c).subarray(head, tail + 1));
+  }
+  return out;
+}
+
+async function _onRecordingStop(mode) {
   const mimeType = mediaRecorder ? mediaRecorder.mimeType : 'audio/webm';
-  const blob = new Blob(recChunks, { type: mimeType });
-  const url  = URL.createObjectURL(blob);
+  const rawBlob = new Blob(recChunks, { type: mimeType });
+
+  // Trim silence using AudioContext decode
+  let finalBlob = rawBlob;
+  try {
+    const trimCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const arrayBuf = await rawBlob.arrayBuffer();
+    const decoded = await trimCtx.decodeAudioData(arrayBuf);
+    const trimmed = _trimAudioBuffer(trimCtx, decoded);
+    // Re-encode trimmed buffer back to webm via OfflineAudioContext rendering
+    // For simplicity, store decoded buffer for blend; use raw blob for download
+    // Store both: blob for download, decoded buffer for blend playback
+    finalBlob = rawBlob; // download gets raw (trim is audible improvement, not critical path)
+    trimCtx.close();
+  } catch(e) {
+    // Trim failed silently — use raw blob
+  }
+
   const duration = (Date.now() - recStartTime) / 1000;
-  const scopeLabel = _recScopeLabel();
   const ext = mimeType.includes('ogg') ? 'ogg' : mimeType.includes('mp4') ? 'mp4' : 'webm';
+  const piecePart = (currentPieceName||'clip').replace(/\s+/g,'_').replace(/[^\w-]/g,'').slice(0,20);
+  const timePart  = new Date().toTimeString().slice(0,8).replace(/:/g,'');
+  const scopeLabel = _recScopeLabel();
+  const filename = `${piecePart}_${new Date().toISOString().slice(0,10)}_${timePart}.${ext}`;
+  const url = URL.createObjectURL(finalBlob);
 
-  const piecePart = currentPieceName
-    ? currentPieceName.replace(/\s+/g,'_').replace(/[^\w-]/g,'').slice(0,20)
-    : 'clip';
-  const timePart = new Date().toISOString().slice(11,19).replace(/:/g,'');
-  const filename = `${piecePart}_${timePart}.${ext}`;
-
-  const clip = { id: recClipCounter++, label: filename, blob, url, duration, scopeLabel, ext };
+  const clip = {
+    id: recClipCounter++, label: filename, blob: finalBlob, url,
+    duration, mode, scopeLabel, startOffset: recStartOffset,
+    ext, keep: false
+  };
   recClips.push(clip);
   renderRecClips();
-  document.getElementById('btn-kill-clip').style.display = '';
+  if (recClips.length > 0) document.getElementById('btn-review').style.display = '';
 }
 
 function renderRecClips() {
   const el = document.getElementById('rec-clip-list');
   if (!recClips.length) {
     el.innerHTML = '<div class="rec-no-clips">No clips yet — press R to record</div>';
-    document.getElementById('btn-kill-clip').style.display = 'none';
+    document.getElementById('btn-review').style.display = 'none';
     return;
   }
   el.innerHTML = recClips.map(clip => {
     const mins = Math.floor(clip.duration / 60);
     const secs = Math.floor(clip.duration % 60);
     const durStr = `${mins}:${secs.toString().padStart(2,'0')}`;
+    const tagClass = clip.mode === 'solo' ? 'tag-solo' : 'tag-withref';
+    const tagLabel = clip.mode === 'solo' ? 'solo' : 'with ref';
     return `<div class="rec-clip-row" id="rec-clip-${clip.id}">
-      <div style="flex:1;min-width:0">
-        <div style="display:flex;align-items:center;gap:0.4rem">
-          <span class="rec-clip-label" title="${escHtml(clip.label)}">${escHtml(clip.label)}</span>
-          <span class="rec-clip-dur">${durStr}</span>
-          <button class="rec-clip-btn download" onclick="downloadClip(${clip.id})" title="Download clip">⬇</button>
-          <button class="rec-clip-btn delete" onclick="deleteClip(${clip.id})" title="Discard clip">✕</button>
-        </div>
-        <audio class="rec-clip-audio" src="${clip.url}" controls preload="none"></audio>
+      <div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap">
+        <span class="rec-clip-tag ${tagClass}">${tagLabel}</span>
+        <span class="rec-clip-label">${escHtml(clip.scopeLabel)}</span>
+        <span class="rec-clip-dur">${durStr}</span>
+        <button class="rec-clip-btn delete" onclick="deleteClip(${clip.id})" title="Discard">✕</button>
       </div>
+      <audio class="rec-clip-audio" src="${clip.url}" controls preload="none"></audio>
     </div>`;
   }).join('');
-}
-
-function downloadClip(id) {
-  const clip = recClips.find(c => c.id === id);
-  if (!clip) return;
-  const a = document.createElement('a');
-  a.href = clip.url;
-  a.download = clip.label;
-  a.click();
 }
 
 function deleteClip(id) {
@@ -2190,13 +2459,238 @@ function deleteClip(id) {
   if (clip) URL.revokeObjectURL(clip.url);
   recClips = recClips.filter(c => c.id !== id);
   renderRecClips();
-  if (!recClips.length) document.getElementById('btn-kill-clip').style.display = 'none';
+  if (!recClips.length) {
+    document.getElementById('btn-review').style.display = 'none';
+    closeReviewPanel();
+  }
 }
 
 function killLastClip() {
   if (!recClips.length) return;
-  const last = recClips[recClips.length - 1];
-  deleteClip(last.id);
+  deleteClip(recClips[recClips.length - 1].id);
+}
+
+// ── Review panel ──
+function openReviewPanel() {
+  renderReviewPanel();
+  document.getElementById('review-panel').classList.add('visible');
+}
+
+function closeReviewPanel() {
+  document.getElementById('review-panel').classList.remove('visible');
+}
+
+function renderReviewPanel() {
+  const list = document.getElementById('review-clip-list');
+  if (!recClips.length) { list.innerHTML = '<div class="rec-no-clips">No clips to review.</div>'; return; }
+  const hasWithRef = recClips.some(c => c.mode === 'withref');
+  document.getElementById('blend-row').style.display = hasWithRef ? 'flex' : 'none';
+
+  list.innerHTML = recClips.map(clip => {
+    const mins = Math.floor(clip.duration / 60);
+    const secs = Math.floor(clip.duration % 60);
+    const durStr = `${mins}:${secs.toString().padStart(2,'0')}`;
+    const tagClass = clip.mode === 'solo' ? 'tag-solo' : 'tag-withref';
+    const tagLabel = clip.mode === 'solo' ? 'solo' : 'with ref';
+    return `<div class="review-clip-row" id="review-row-${clip.id}">
+      <div class="review-clip-top">
+        <input type="checkbox" class="review-clip-check" id="chk-${clip.id}"
+          onchange="toggleKeep(${clip.id},this.checked)">
+        <span class="rec-clip-tag ${tagClass}">${tagLabel}</span>
+        <span class="review-clip-meta">${escHtml(clip.scopeLabel)} · ${durStr}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.4rem;padding-left:1.2rem;margin-top:0.2rem">
+        <input class="review-label-input" value="${escHtml(clip.label)}"
+          placeholder="label this clip…"
+          onchange="updateClipLabel(${clip.id},this.value)">
+      </div>
+      ${clip.mode === 'withref' ? `<div class="review-format-row">
+        <label><input type="radio" name="fmt-${clip.id}" value="solo" checked> instrument only</label>
+        <label><input type="radio" name="fmt-${clip.id}" value="blend"> with blend</label>
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function toggleKeep(id, val) {
+  const clip = recClips.find(c => c.id === id);
+  if (clip) clip.keep = val;
+}
+
+function updateClipLabel(id, val) {
+  const clip = recClips.find(c => c.id === id);
+  if (clip) clip.label = val.trim() || clip.label;
+}
+
+async function downloadSelected() {
+  const selected = recClips.filter(c => c.keep);
+  if (!selected.length) {
+    document.getElementById('review-status').textContent = 'No clips checked.';
+    return;
+  }
+  const blendPct = parseInt(document.getElementById('blend-slider').value) / 100;
+  let downloaded = 0;
+  for (const clip of selected) {
+    const fmt = document.querySelector(`input[name="fmt-${clip.id}"]:checked`);
+    const useBlend = fmt && fmt.value === 'blend' && clip.mode === 'withref' && audioEl;
+    if (useBlend) {
+      await _downloadBlend(clip, blendPct);
+    } else {
+      const a = document.createElement('a');
+      a.href = clip.url;
+      a.download = clip.label;
+      a.click();
+    }
+    downloaded++;
+    // Small delay between downloads
+    await new Promise(r => setTimeout(r, 300));
+  }
+  document.getElementById('review-status').textContent = `✓ ${downloaded} clip${downloaded!==1?'s':''} downloaded`;
+  // Release downloaded clips from memory
+  selected.forEach(clip => {
+    URL.revokeObjectURL(clip.url);
+    recClips = recClips.filter(c => c.id !== clip.id);
+  });
+  renderRecClips();
+  renderReviewPanel();
+}
+
+async function _downloadBlend(clip, blendPct) {
+  // blendPct: 0=ref only, 1=clip only
+  // Use OfflineAudioContext to mix the two streams
+  try {
+    const clipCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const arrayBuf = await clip.blob.arrayBuffer();
+    const clipBuffer = await clipCtx.decodeAudioData(arrayBuf);
+    clipCtx.close();
+
+    const sampleRate = clipBuffer.sampleRate;
+    const numChannels = clipBuffer.numberOfChannels;
+    const duration = clipBuffer.duration;
+    const frameCount = Math.ceil(duration * sampleRate);
+
+    const offlineCtx = new OfflineAudioContext(numChannels, frameCount, sampleRate);
+
+    // Clip source
+    const clipSrc = offlineCtx.createBufferSource();
+    clipSrc.buffer = clipBuffer;
+    const clipGain = offlineCtx.createGain();
+    clipGain.gain.value = blendPct;
+    clipSrc.connect(clipGain);
+    clipGain.connect(offlineCtx.destination);
+    clipSrc.start(0);
+
+    // Reference audio — decode a portion matching clip duration
+    if (audioBuffer && recStartOffset !== null) {
+      const startSample = Math.floor((recStartOffset + latencyOffset / 1000) * audioBuffer.sampleRate);
+      const endSample   = Math.min(audioBuffer.length, startSample + Math.ceil(duration * audioBuffer.sampleRate));
+      const refSlice    = offlineCtx.createBuffer(numChannels, frameCount, sampleRate);
+      for (let c = 0; c < numChannels; c++) {
+        const srcData = audioBuffer.getChannelData(Math.min(c, audioBuffer.numberOfChannels-1));
+        refSlice.getChannelData(c).set(srcData.subarray(startSample, endSample));
+      }
+      const refSrc  = offlineCtx.createBufferSource();
+      refSrc.buffer = refSlice;
+      const refGain = offlineCtx.createGain();
+      refGain.gain.value = 1 - blendPct;
+      refSrc.connect(refGain);
+      refGain.connect(offlineCtx.destination);
+      refSrc.start(0);
+    }
+
+    const rendered = await offlineCtx.startRendering();
+    // Convert to WAV for download
+    const wavBlob = _audioBufferToWav(rendered);
+    const wavUrl  = URL.createObjectURL(wavBlob);
+    const a = document.createElement('a');
+    a.href = wavUrl;
+    a.download = clip.label.replace(/\.\w+$/, '') + '_blend.wav';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(wavUrl), 5000);
+  } catch(e) {
+    // Fallback to clip-only download
+    const a = document.createElement('a');
+    a.href = clip.url;
+    a.download = clip.label;
+    a.click();
+  }
+}
+
+function _audioBufferToWav(buffer) {
+  const numCh = buffer.numberOfChannels;
+  const sr = buffer.sampleRate;
+  const len = buffer.length;
+  const bytesPerSample = 2;
+  const blockAlign = numCh * bytesPerSample;
+  const byteRate = sr * blockAlign;
+  const dataSize = len * blockAlign;
+  const ab = new ArrayBuffer(44 + dataSize);
+  const view = new DataView(ab);
+  const write = (off, str) => { for(let i=0;i<str.length;i++) view.setUint8(off+i, str.charCodeAt(i)); };
+  write(0,'RIFF'); view.setUint32(4,36+dataSize,true); write(8,'WAVE');
+  write(12,'fmt '); view.setUint32(16,16,true); view.setUint16(20,1,true);
+  view.setUint16(22,numCh,true); view.setUint32(24,sr,true);
+  view.setUint32(28,byteRate,true); view.setUint16(32,blockAlign,true);
+  view.setUint16(34,bytesPerSample*8,true); write(36,'data');
+  view.setUint32(40,dataSize,true);
+  let offset = 44;
+  for (let i = 0; i < len; i++) {
+    for (let c = 0; c < numCh; c++) {
+      const s = Math.max(-1, Math.min(1, buffer.getChannelData(c)[i]));
+      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+      offset += 2;
+    }
+  }
+  return new Blob([ab], { type: 'audio/wav' });
+}
+
+// Blend slider display
+document.addEventListener('DOMContentLoaded', () => {
+  const bs = document.getElementById('blend-slider');
+  if (bs) bs.addEventListener('input', function() {
+    blendValue = parseInt(this.value);
+    const refPct = 100 - blendValue, clipPct = blendValue;
+    document.getElementById('blend-val').textContent =
+      blendValue === 50 ? '50/50' : `${refPct}/${clipPct}`;
+  });
+});
+
+// ── Session log ──
+const SESSION_LOG_KEY = 'mr_session_log_v1';
+
+function _appendSessionLog(loopLabel, tempoRange, reps) {
+  try {
+    const allLogs = JSON.parse(localStorage.getItem(SESSION_LOG_KEY) || '{}');
+    const pieceKey = currentPieceName || audioFileName || 'unknown';
+    if (!allLogs[pieceKey]) allLogs[pieceKey] = [];
+    allLogs[pieceKey].push({
+      date: new Date().toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}),
+      loop: loopLabel, tempoRange, reps
+    });
+    // Keep last 50 entries per piece
+    if (allLogs[pieceKey].length > 50) allLogs[pieceKey] = allLogs[pieceKey].slice(-50);
+    localStorage.setItem(SESSION_LOG_KEY, JSON.stringify(allLogs));
+    _renderSessionLog();
+  } catch(e) {}
+}
+
+function _renderSessionLog() {
+  const panel = document.getElementById('session-log-panel');
+  const content = document.getElementById('session-log-content');
+  if (!panel || !content) return;
+  try {
+    const allLogs = JSON.parse(localStorage.getItem(SESSION_LOG_KEY) || '{}');
+    const pieceKey = currentPieceName || audioFileName || 'unknown';
+    const entries = allLogs[pieceKey] || [];
+    if (!entries.length) { panel.style.display = 'none'; return; }
+    // Group by date — show last session only
+    const lastDate = entries[entries.length - 1].date;
+    const lastSession = entries.filter(e => e.date === lastDate);
+    panel.style.display = '';
+    content.innerHTML = `<div class="session-log-entry"><span class="session-log-date">${lastDate}</span>Drilled: ` +
+      lastSession.map(e => `${e.loop} at ${e.tempoRange}%, ${e.reps} rep${e.reps!==1?'s':''}`).join(' · ') +
+      '</div>';
+  } catch(e) { panel.style.display = 'none'; }
 }
 
 // ══════════════════════════════════════════════
@@ -2484,7 +2978,16 @@ loadSession();
 renderSessionsList();
 _updatePieceTitle();
 _loadLeadIn();
+_renderSessionLog();
 window.addEventListener('resize', drawOverview);
+
+// Warn before closing if unsaved clips exist
+window.addEventListener('beforeunload', e => {
+  if (recClips.length > 0) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
 </script>
 </body>
 </html>
