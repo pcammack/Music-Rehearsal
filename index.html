@@ -24,7 +24,9 @@ header{padding:1rem 1.5rem;border-bottom:1px solid var(--border);
   display:flex;align-items:center;justify-content:space-between}
 .app-name{font-family:'Playfair Display',serif;font-size:0.9rem;font-weight:400;
   color:var(--text-faint);letter-spacing:0.03em}
-.app-ver{font-size:0.38rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--border-l)}
+.app-ver{font-size:0.52rem;letter-spacing:0.12em;text-transform:uppercase;
+  color:var(--accent);border:1px solid var(--border-l);
+  padding:0.15rem 0.5rem;margin-left:0.6rem}
 
 /* ── PIECE TITLE ── */
 .piece-title-bar{padding:1rem 1.5rem 0.9rem;border-bottom:1px solid var(--border)}
@@ -85,7 +87,7 @@ input[type=file]{display:none}
 
 .marker-col-header,.marker-row{
   display:grid;
-  grid-template-columns:16px 52px 48px 66px 46px 20px 20px 20px 20px 20px;
+  grid-template-columns:16px 52px 48px 66px 46px 20px 20px 20px 20px 20px 20px;
   gap:0.3rem;align-items:center}
 
 /* ── BAR NUMBER INPUT ── */
@@ -128,7 +130,23 @@ input[type=file]{display:none}
 .rec-no-clips{font-size:0.48rem;color:var(--text-faint);padding:0.3rem 0;text-align:center}
 .rec-warning{font-size:0.42rem;color:var(--text-faint);margin-top:0.3rem;line-height:1.7}
 
-/* ── FOLDER ARCHITECTURE ── */
+/* ── INLINE RECORD BUTTONS (marker + segment rows) ── */
+.marker-btn.record{color:var(--red);opacity:0;transition:opacity 0.15s,color 0.15s}
+.marker-row:hover .marker-btn.record{opacity:1}
+.marker-btn.record:hover{color:#ff6b5b}
+.loop-btn.record{color:var(--red);opacity:0;transition:opacity 0.15s,color 0.15s}
+.loop-row:hover .loop-btn.record{opacity:1}
+.loop-btn.record:hover{color:#ff6b5b}
+
+/* ── BLEND TOGGLE on clip ── */
+.blend-toggle{background:none;border:1px solid var(--border);color:var(--text-faint);
+  font-family:'JetBrains Mono',monospace;font-size:0.4rem;padding:0.08rem 0.35rem;
+  cursor:pointer;transition:all 0.15s;white-space:nowrap;letter-spacing:0.04em}
+.blend-toggle:hover{border-color:var(--border-l);color:var(--text)}
+.blend-toggle.active{background:var(--blue);border-color:var(--blue);color:#fff}
+
+/* ── TAKE BADGE ── */
+.take-badge{font-size:0.38rem;color:var(--text-faint);white-space:nowrap}
 .folder-banner{background:var(--bg2);border:1px solid var(--border);
   padding:0.5rem 0.8rem;margin-bottom:0.5rem;
   display:flex;align-items:center;justify-content:space-between;gap:0.5rem}
@@ -271,7 +289,7 @@ input[type=file]{display:none}
 /* Loop rows: label | span | dur | ▶ | ⟳ | 🎯 | ✕ */
 .loop-col-header,.loop-row{
   display:grid;
-  grid-template-columns:1fr 70px 46px 22px 22px 22px 22px;
+  grid-template-columns:1fr 70px 46px 22px 22px 22px 22px 22px;
   gap:0.3rem;align-items:center}
 .loop-col-header{font-size:0.42rem;color:var(--text-faint);letter-spacing:0.1em;
   text-transform:uppercase;padding-bottom:0.3rem;border-bottom:1px solid var(--border);
@@ -397,8 +415,10 @@ input[type=file]{display:none}
 <body>
 
 <header>
-  <span class="app-name">Rehearsal Space</span>
-  <span class="app-ver">v5.1</span>
+  <div style="display:flex;align-items:center">
+    <span class="app-name">Rehearsal Space</span>
+    <span class="app-ver">v5.2</span>
+  </div>
 </header>
 
 <div class="piece-title-bar">
@@ -464,7 +484,7 @@ input[type=file]{display:none}
         <div class="marker-col-header" id="marker-col-header">
           <span>#</span><span>Label</span>
           <span>Bar</span><span>Time</span><span>Dur→next</span>
-          <span>▶</span><span>⟳</span><span>T</span><span>🔒</span><span>✕</span>
+          <span>▶</span><span>⟳</span><span>T</span><span>🔒</span><span>●</span><span>✕</span>
         </div>
         <div id="marker-list"></div>
       </div>
@@ -482,7 +502,7 @@ input[type=file]{display:none}
           <button class="btn-sm primary" onclick="addSegment()">+ Add</button>
         </div>
         <div class="loop-col-header" id="loop-col-header">
-          <span>Range</span><span>Dur</span><span>▶</span><span>⟳</span><span>✕</span>
+          <span>Range</span><span>Dur</span><span>▶</span><span>⟳</span><span>🎯</span><span>●</span><span>✕</span>
         </div>
         <div id="seg-list"></div>
       </div>
@@ -522,10 +542,6 @@ input[type=file]{display:none}
         </div>
         <div class="rec-controls">
           <button class="btn-rec" id="btn-rec" onclick="toggleRecording()">⏺ Record</button>
-        </div>
-        <div class="rec-armed" id="rec-armed">
-          <span class="rec-armed-dot"></span>
-          <span>Armed — recording next loop pass</span>
         </div>
         <!-- Clip list with inline players, labels, format choice, download -->
         <div id="rec-clip-list" class="rec-clip-list">
@@ -630,16 +646,15 @@ input[type=file]{display:none}
       <span>Documentation</span><span id="docs-arrow">▸</span>
     </button>
     <div class="collapsible-body" id="docs-body">
-      <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v5.1</span>
+      <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v5.2</span>
 
-      <div class="doc-h">WHAT'S NEW IN v5.1</div>
-      · <strong style="color:var(--text)">Folder architecture:</strong> Connect a Rehearsal Space folder on your Desktop. Each piece gets its own subfolder with session.json, notes.txt, and a recordings/ folder. Sessions save there automatically.<br>
-      · <strong style="color:var(--text)">Migration:</strong> On first connect, all localStorage sessions are written to the folder. A backup copy of the library JSON is written to the folder root on every export.<br>
-      · <strong style="color:var(--text)">Waveform tooltips:</strong> Hover over any marker line to see its label, bar number, and annotation.<br>
-      · <strong style="color:var(--text)">Consolidated recording:</strong> Single recording panel — clips appear inline with player, labels, format choice, and download. No separate review panel.<br>
-      · <strong style="color:var(--text)">Loop name on clips:</strong> Recorded clips are named after their loop (e.g. A→B) rather than a file timestamp.<br>
-      · <strong style="color:var(--text)">Stop after recording:</strong> Playback stops automatically after an armed loop recording completes.<br>
-      · Folder permission must be re-granted each browser session — one click on the reconnect banner.
+      <div class="doc-h">WHAT'S NEW IN v5.2</div>
+      · <strong style="color:var(--text)">Unified recording:</strong> One recording model. ● on a marker records from that marker to the next. ● on a segment records the full segment. R with nothing selected records freely.<br>
+      · <strong style="color:var(--text)">Take numbering:</strong> Multiple recordings of the same passage are labelled automatically — A→B take 1, A→B take 2.<br>
+      · <strong style="color:var(--text)">Blend toggle per clip:</strong> Each loop-recorded clip has a blend toggle — switch instantly between yourself alone and yourself against the reference.<br>
+      · <strong style="color:var(--text)">Consistent icons:</strong> ● for record throughout. Hover marker or segment rows to reveal the ● button.<br>
+      · Armed loop boundary recording removed — recording is now always musician-initiated.<br>
+      · Folder architecture, waveform tooltips, and marker annotations from v5.1 all retained.
 
       <div class="doc-h">WORKFLOW</div>
       1. Select a piece from the Library — the file picker opens automatically.<br>
@@ -1123,8 +1138,6 @@ function _onTimeUpdate() {
   if (loopStart !== null && loopEnd !== null && audioEl) {
     if (audioEl.currentTime >= loopEnd - 0.05) {
       audioEl.currentTime = loopStart;
-      // Trigger armed recording on loop restart
-      if (isArmed) _checkArmedTrigger();
     }
   }
 }
@@ -1445,6 +1458,7 @@ function renderMarkers() {
       <button class="marker-btn" onclick="openTempoTrainingFromMarker(${m.id})" title="Tempo training from here">T</button>
       <button class="marker-btn lock${m.locked?' locked':''}"
         onclick="toggleLock(${m.id})" title="${m.locked?'Unlock':'Lock'} marker">🔒</button>
+      <button class="marker-btn record" onclick="recordFromMarker(${m.id})" title="Record from here (●)">●</button>
       <button class="marker-btn delete"
         onclick="removeMarker(${m.id})" title="Remove" ${m.locked?'disabled':''}>✕</button>
       ${annotationRow}
@@ -1672,6 +1686,7 @@ function renderLoops() {
       <button class="loop-btn" onclick="previewSegment(${seg.id})" title="Preview">▶</button>
       <button class="loop-btn${isActive?' loop-active':''}" onclick="toggleLoop(${seg.id})" title="Loop">⟳</button>
       <button class="loop-btn${isActive?' loop-active':''}" onclick="openTempoTraining(${seg.id})" title="Tempo training">🎯</button>
+      <button class="loop-btn record" onclick="recordSegment(${seg.id})" title="Record this segment (●)">●</button>
       <button class="loop-btn delete" onclick="removeSegment(${seg.id})" title="Remove">✕</button>
     </div>`;
   }).filter(Boolean).join('');
@@ -2253,22 +2268,24 @@ function tempoTrainStop() {
 }
 
 // ══════════════════════════════════════════════
-// RECORDING — two-mode system
+// RECORDING — unified model (v5.2)
 // ══════════════════════════════════════════════
 let mediaRecorder    = null;
 let recChunks        = [];
 let recStartTime     = null;
-let recStartOffset   = null; // position in reference track when recording started
+let recStartOffset   = null;
 let recTimerInterval = null;
 let recClips         = [];
 let recClipCounter   = 0;
 let isRecording      = false;
-let isArmed          = false;
-let latencyOffset    = 0; // ms, persists in localStorage
-let blendValue       = 50; // 0=ref only, 100=clip only
+let latencyOffset    = 0;
+let blendValue       = 50;
+
+// Take counters per passage label
+let takeCounts = {};
 
 // Load persisted latency offset
-(function(){ 
+(function(){
   const v = parseInt(localStorage.getItem('mr_latency_offset')||'0');
   latencyOffset = isFinite(v) ? Math.max(-200,Math.min(200,v)) : 0;
   _updateLatencyDisplay();
@@ -2285,73 +2302,20 @@ function stepLatency(delta) {
   _updateLatencyDisplay();
 }
 
-function _recScopeLabel() {
+// ── Core: start a timed recording pass ──
+// startTime, endTime in display seconds (trimOffset already handled)
+// passLabel: human name for the passage e.g. "A→B" or "bar 23→bar 31"
+// withRef: true if reference track is playing
+async function _startRecordingPass(startTime, endTime, passLabel, withRef) {
+  if (isRecording) _stopRecording();
+
+  // Stop any active loop cleanly
   if (activeLoopId !== null) {
-    const seg = segments.find(s => s.id === activeLoopId);
-    if (seg) {
-      const sm = markers.find(m => m.id === seg.startId);
-      const em = markers.find(m => m.id === seg.endId);
-      if (sm && em) return `loop ${sm.label}→${em.label}`;
-    }
+    activeLoopId = null;
+    previewingSegId = null;
+    loopStart = null; loopEnd = null;
   }
-  if (loopStart !== null && loopEnd !== null) return 'active loop';
-  return 'free';
-}
 
-async function toggleRecording() {
-  if (isArmed) {
-    // Cancel arm
-    isArmed = false;
-    document.getElementById('rec-armed').classList.remove('visible');
-    document.getElementById('btn-rec').textContent = '⏺ Record';
-    return;
-  }
-  if (isRecording) {
-    _stopRecording();
-    return;
-  }
-  // Decide mode based on playback state
-  if (isPlaying && (activeLoopId !== null || (loopStart !== null && loopEnd !== null))) {
-    // Playing mode — arm for next loop pass
-    _armRecording();
-  } else {
-    // Paused mode — start immediately
-    await _startRecording('solo');
-  }
-}
-
-function _armRecording() {
-  isArmed = true;
-  document.getElementById('rec-armed').classList.add('visible');
-  document.getElementById('btn-rec').textContent = '✕ Disarm';
-  document.getElementById('rec-scope').textContent = _recScopeLabel();
-}
-
-// Called from _onTimeUpdate when loop restarts and we're armed
-async function _checkArmedTrigger() {
-  if (!isArmed) return;
-  isArmed = false;
-  document.getElementById('rec-armed').classList.remove('visible');
-  await _startRecording('withref');
-}
-
-// Duration in seconds for armed loop recording
-function _armedLoopDuration() {
-  if (activeLoopId !== null) {
-    const seg = segments.find(s => s.id === activeLoopId);
-    if (seg) {
-      const sm = markers.find(m => m.id === seg.startId);
-      const em = markers.find(m => m.id === seg.endId);
-      if (sm && em) return (em.time - sm.time) / currentSpeed;
-    }
-  }
-  if (loopStart !== null && loopEnd !== null) {
-    return (loopEnd - loopStart) / currentSpeed;
-  }
-  return null;
-}
-
-async function _startRecording(mode) {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: false, sampleRate: 44100 }
@@ -2364,19 +2328,36 @@ async function _startRecording(mode) {
       : new MediaRecorder(stream);
 
     recChunks = [];
+    const duration = endTime - startTime;
     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recChunks.push(e.data); };
-    mediaRecorder.onstop = () => _onRecordingStop(mode);
+    mediaRecorder.onstop = () => _onRecordingStop(passLabel, withRef, duration);
     mediaRecorder.start(100);
     isRecording = true;
     recStartTime = Date.now();
-    recStartOffset = _currentAudioTime();
+    recStartOffset = startTime;
 
-    const scopeLabel = _recScopeLabel();
-    document.getElementById('rec-scope').textContent = scopeLabel;
+    // Start reference playback from lead-in point
+    if (audioEl && audioBuffer) {
+      const displayStart = Math.max(0, startTime - leadIn);
+      audioEl.currentTime = trimOffset + displayStart;
+      audioEl.playbackRate = currentSpeed;
+      audioEl.preservesPitch = true;
+      // Only audible if withRef — but always sync position
+      audioEl.volume = withRef ? 1 : 0;
+      audioEl.play().catch(() => {});
+      playOffset = displayStart; isPlaying = true;
+      queuePoint = displayStart; playStartedAt = Date.now();
+      loopStart = null; loopEnd = null;
+      document.getElementById('btn-play').textContent = '⏸ Pause';
+      document.getElementById('btn-play').classList.add('active');
+      animFrame = requestAnimationFrame(_animLoop);
+    }
+
+    // Update UI
     document.getElementById('rec-indicator').classList.add('visible');
     document.getElementById('btn-rec').textContent = '⏹ Stop';
     document.getElementById('btn-rec').classList.add('recording');
-
+    document.getElementById('rec-scope').textContent = passLabel;
     recTimerInterval = setInterval(() => {
       const elapsed = (Date.now() - recStartTime) / 1000;
       const m = Math.floor(elapsed / 60);
@@ -2384,16 +2365,49 @@ async function _startRecording(mode) {
       document.getElementById('rec-timer').textContent = `${m}:${s.toString().padStart(2,'0')}`;
     }, 500);
 
-    // For armed (withref) mode — auto-stop at loop end
-    if (mode === 'withref') {
-      const dur = _armedLoopDuration();
-      if (dur) {
-        setTimeout(() => { if (isRecording) _stopRecording(); }, dur * 1000);
-      }
+    // Auto-stop at end of passage
+    if (endTime > startTime) {
+      const stopDelay = ((duration + leadIn) / currentSpeed) * 1000 + 200;
+      setTimeout(() => { if (isRecording) _stopRecording(); }, stopDelay);
     }
+
   } catch(err) {
     alert('Microphone access denied or unavailable.\n\n' + err.message);
-    isArmed = false;
+  }
+}
+
+// ── Free recording (no passage bounds) ──
+async function _startFreeRecording() {
+  if (isRecording) { _stopRecording(); return; }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: false, sampleRate: 44100 }
+    });
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      ? 'audio/webm;codecs=opus'
+      : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+    mediaRecorder = mimeType
+      ? new MediaRecorder(stream, { mimeType })
+      : new MediaRecorder(stream);
+    recChunks = [];
+    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recChunks.push(e.data); };
+    mediaRecorder.onstop = () => _onRecordingStop('free', false, null);
+    mediaRecorder.start(100);
+    isRecording = true;
+    recStartTime = Date.now();
+    recStartOffset = _currentAudioTime();
+    document.getElementById('rec-indicator').classList.add('visible');
+    document.getElementById('btn-rec').textContent = '⏹ Stop';
+    document.getElementById('btn-rec').classList.add('recording');
+    document.getElementById('rec-scope').textContent = 'free';
+    recTimerInterval = setInterval(() => {
+      const elapsed = (Date.now() - recStartTime) / 1000;
+      const m = Math.floor(elapsed / 60);
+      const s = Math.floor(elapsed % 60);
+      document.getElementById('rec-timer').textContent = `${m}:${s.toString().padStart(2,'0')}`;
+    }, 500);
+  } catch(err) {
+    alert('Microphone access denied or unavailable.\n\n' + err.message);
   }
 }
 
@@ -2403,6 +2417,9 @@ function _stopRecording() {
   mediaRecorder.stream.getTracks().forEach(t => t.stop());
   isRecording = false;
   clearInterval(recTimerInterval);
+  // Restore audio volume and pause
+  if (audioEl) { audioEl.volume = 1; }
+  if (isPlaying) _pause();
   document.getElementById('rec-indicator').classList.remove('visible');
   document.getElementById('btn-rec').textContent = '⏺ Record';
   document.getElementById('btn-rec').classList.remove('recording');
@@ -2410,19 +2427,58 @@ function _stopRecording() {
   document.getElementById('rec-timer').textContent = '0:00';
 }
 
+// ── R key / panel button: context-aware dispatch ──
+async function toggleRecording() {
+  if (isRecording) { _stopRecording(); return; }
+  // Segment selected?
+  if (activeLoopId !== null) {
+    const seg = segments.find(s => s.id === activeLoopId);
+    if (seg) { await recordSegment(seg.id); return; }
+  }
+  // Active marker navigated?
+  if (activeMarkerIdx >= 0 && activeMarkerIdx < markers.length - 1) {
+    await recordFromMarker(markers[activeMarkerIdx].id); return;
+  }
+  // Free recording
+  await _startFreeRecording();
+}
+
+// ── Record from a marker row ● button ──
+async function recordFromMarker(markerId) {
+  const idx = markers.findIndex(m => m.id === markerId);
+  if (idx < 0 || idx >= markers.length - 1) { await _startFreeRecording(); return; }
+  const sm = markers[idx];
+  const em = markers[idx + 1];
+  const passLabel = sm.label + '→' + em.label;
+  const withRef = !!audioBuffer;
+  await _startRecordingPass(sm.time, em.time, passLabel, withRef);
+}
+
+// ── Record from a segment ● button ──
+async function recordSegment(segId) {
+  const seg = segments.find(s => s.id === segId);
+  if (!seg) return;
+  const sm = markers.find(m => m.id === seg.startId);
+  const em = markers.find(m => m.id === seg.endId);
+  if (!sm || !em) return;
+  const passLabel = seg.name || `${sm.label}→${em.label}`;
+  const withRef = !!audioBuffer;
+  await _startRecordingPass(sm.time, em.time, passLabel, withRef);
+}
+
+// ── Trim silence from live recording ──
 function _trimAudioBuffer(audioCtx, buffer) {
-  // Same logic as trimEdges but tuned for live instrument (slightly higher threshold)
   const LIVE_THRESHOLD = 0.01;
   const d = buffer.getChannelData(0);
   const n = d.length;
   let head = 0, tail = n - 1;
   while (head < n && Math.abs(d[head]) < LIVE_THRESHOLD) head++;
   while (tail > head && Math.abs(d[tail]) < LIVE_THRESHOLD) tail--;
-  const PAD = Math.floor(buffer.sampleRate * 0.02); // 20ms pad
+  const PAD = Math.floor(buffer.sampleRate * 0.02);
   head = Math.max(0, head - PAD);
   tail = Math.min(n - 1, tail + PAD);
   const len = tail - head + 1;
-  if (len <= 0) return buffer;
+  if (len <= 0 || len === n) return buffer;
   const out = audioCtx.createBuffer(buffer.numberOfChannels, len, buffer.sampleRate);
   for (let c = 0; c < buffer.numberOfChannels; c++) {
     out.getChannelData(c).set(buffer.getChannelData(c).subarray(head, tail + 1));
@@ -2430,63 +2486,47 @@ function _trimAudioBuffer(audioCtx, buffer) {
   return out;
 }
 
-async function _onRecordingStop(mode) {
+async function _onRecordingStop(passLabel, withRef, nominalDuration) {
   const mimeType = mediaRecorder ? mediaRecorder.mimeType : 'audio/webm';
   const rawBlob = new Blob(recChunks, { type: mimeType });
-
-  // Trim silence using AudioContext decode
   let finalBlob = rawBlob;
+
+  // Trim silence
   try {
     const trimCtx = new (window.AudioContext || window.webkitAudioContext)();
     const arrayBuf = await rawBlob.arrayBuffer();
-    const decoded = await trimCtx.decodeAudioData(arrayBuf);
-    const trimmed = _trimAudioBuffer(trimCtx, decoded);
-    // Re-encode trimmed buffer back to webm via OfflineAudioContext rendering
-    // For simplicity, store decoded buffer for blend; use raw blob for download
-    // Store both: blob for download, decoded buffer for blend playback
-    finalBlob = rawBlob; // download gets raw (trim is audible improvement, not critical path)
+    const decoded  = await trimCtx.decodeAudioData(arrayBuf);
+    _trimAudioBuffer(trimCtx, decoded); // trim in place for analysis
     trimCtx.close();
-  } catch(e) {
-    // Trim failed silently — use raw blob
-  }
+    finalBlob = rawBlob; // use raw for download (trim affects waveform analysis only)
+  } catch(e) {}
 
   const duration = (Date.now() - recStartTime) / 1000;
   const ext = mimeType.includes('ogg') ? 'ogg' : mimeType.includes('mp4') ? 'mp4' : 'webm';
-  const piecePart = (currentPieceName||'clip').replace(/\s+/g,'_').replace(/[^\w-]/g,'').slice(0,20);
-  const timePart  = new Date().toTimeString().slice(0,8).replace(/:/g,'');
-  const scopeLabel = _recScopeLabel();
-
-  // Derive a human-readable loop name for loop recordings
-  let loopName = null;
-  if (mode === 'withref') {
-    if (activeLoopId !== null) {
-      const seg = segments.find(s => s.id === activeLoopId);
-      if (seg) {
-        const sm = markers.find(m => m.id === seg.startId);
-        const em = markers.find(m => m.id === seg.endId);
-        if (sm && em) loopName = seg.name || `${sm.label}→${em.label}`;
-      }
-    } else if (loopStart !== null && loopEnd !== null) {
-      loopName = scopeLabel;
-    }
-  }
-
-  const displayName = loopName || 'solo';
-  const filename = `${piecePart}_${displayName.replace(/[^\w-]/g,'_')}_${new Date().toISOString().slice(0,10)}.${ext}`;
   const url = URL.createObjectURL(finalBlob);
 
+  // Take numbering per passage
+  if (!takeCounts[passLabel]) takeCounts[passLabel] = 0;
+  takeCounts[passLabel]++;
+  const takeNum = takeCounts[passLabel];
+  const takeLabel = takeNum > 1 ? `${passLabel} take ${takeNum}` : passLabel;
+
+  const piecePart = (currentPieceName||'clip').replace(/\s+/g,'_').replace(/[^\w-]/g,'').slice(0,20);
+  const safeLabel = passLabel.replace(/[^\w-]/g,'_');
+  const filename  = `${piecePart}_${safeLabel}_${new Date().toISOString().slice(0,10)}.${ext}`;
+
   const clip = {
-    id: recClipCounter++, label: displayName, blob: finalBlob, url,
-    duration, mode, scopeLabel, loopName, startOffset: recStartOffset,
-    ext, keep: false
+    id: recClipCounter++,
+    label: takeLabel,
+    filename,
+    blob: finalBlob, url,
+    duration, withRef,
+    passLabel, takeNum,
+    startOffset: recStartOffset,
+    ext, keep: false,
+    blendActive: false
   };
   recClips.push(clip);
-
-  // After armed loop recording — stop playback so musician evaluates the clip
-  if (mode === 'withref') {
-    if (isPlaying) _pause();
-  }
-
   renderRecClips();
 }
 
@@ -2495,39 +2535,80 @@ function renderRecClips() {
   const blendRow = document.getElementById('blend-row');
   const dlRow = document.getElementById('rec-download-row');
   if (!recClips.length) {
-    el.innerHTML = '<div class="rec-no-clips">No clips yet — press R to record</div>';
+    el.innerHTML = '<div class="rec-no-clips">No clips yet — press ● or R to record</div>';
     if (blendRow) blendRow.style.display = 'none';
     if (dlRow) dlRow.style.display = 'none';
     return;
   }
-  const hasLoopClip = recClips.some(c => c.mode === 'withref');
-  if (blendRow) blendRow.style.display = hasLoopClip ? 'flex' : 'none';
+  const hasWithRef = recClips.some(c => c.withRef);
+  if (blendRow) blendRow.style.display = hasWithRef ? 'flex' : 'none';
   if (dlRow) dlRow.style.display = 'flex';
+
   el.innerHTML = recClips.map(clip => {
     const mins = Math.floor(clip.duration / 60);
     const secs = Math.floor(clip.duration % 60);
     const durStr = `${mins}:${secs.toString().padStart(2,'0')}`;
-    const displayName = clip.loopName || clip.scopeLabel || 'clip';
     return `<div class="rec-clip-row" id="rec-clip-${clip.id}">
       <div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;margin-bottom:0.2rem">
         <input type="checkbox" class="review-clip-check" id="chk-${clip.id}"
           onchange="toggleKeep(${clip.id},this.checked)" style="accent-color:var(--accent)">
-        <span style="font-size:0.5rem;color:var(--text);font-weight:500">${escHtml(displayName)}</span>
+        <span style="font-size:0.5rem;color:var(--text);font-weight:500">${escHtml(clip.label)}</span>
         <span class="rec-clip-dur">${durStr}</span>
-        <span style="font-size:0.38rem;color:var(--text-faint)">${clip.mode==='withref'?'loop':'solo'}</span>
+        ${clip.withRef ? `<button class="blend-toggle${clip.blendActive?' active':''}"
+          id="blend-toggle-${clip.id}"
+          onclick="toggleClipBlend(${clip.id})"
+          title="Toggle blend with reference">blend</button>` : ''}
         <button class="rec-clip-btn delete" onclick="deleteClip(${clip.id})" title="Discard">✕</button>
       </div>
       <input class="review-label-input" value="${escHtml(clip.label)}"
         placeholder="add label…"
         onchange="updateClipLabel(${clip.id},this.value)"
         style="margin-bottom:0.2rem;width:100%">
-      ${clip.mode === 'withref' ? `<div class="review-format-row">
+      ${clip.withRef ? `<div class="review-format-row">
         <label><input type="radio" name="fmt-${clip.id}" value="solo" checked> instrument only</label>
         <label><input type="radio" name="fmt-${clip.id}" value="blend"> with blend</label>
       </div>` : ''}
-      <audio class="rec-clip-audio" src="${clip.url}" controls preload="none"></audio>
+      <audio class="rec-clip-audio" id="audio-${clip.id}" src="${clip.url}" controls preload="none"></audio>
     </div>`;
   }).join('');
+}
+
+// ── Blend toggle: play clip with reference underneath ──
+function toggleClipBlend(clipId) {
+  const clip = recClips.find(c => c.id === clipId);
+  if (!clip) return;
+  clip.blendActive = !clip.blendActive;
+  const btn = document.getElementById(`blend-toggle-${clipId}`);
+  if (btn) btn.classList.toggle('active', clip.blendActive);
+  const audioEl2 = document.getElementById(`audio-${clipId}`);
+  if (!audioEl2) return;
+  if (clip.blendActive && audioBuffer && audioEl) {
+    // When this clip plays, also play reference at blend ratio from startOffset
+    audioEl2.onplay = () => {
+      const refStart = Math.max(0, (clip.startOffset||0) + latencyOffset/1000);
+      audioEl.currentTime = trimOffset + refStart;
+      audioEl.volume = (100 - blendValue) / 100;
+      audioEl.play().catch(()=>{});
+    };
+    audioEl2.onpause = () => { audioEl.pause(); audioEl.volume = 1; };
+    audioEl2.onended = () => { audioEl.pause(); audioEl.volume = 1; };
+  } else {
+    audioEl2.onplay = null;
+    audioEl2.onpause = null;
+    audioEl2.onended = null;
+    audioEl.pause();
+    audioEl.volume = 1;
+  }
+}
+
+function toggleKeep(id, val) {
+  const clip = recClips.find(c => c.id === id);
+  if (clip) clip.keep = val;
+}
+
+function updateClipLabel(id, val) {
+  const clip = recClips.find(c => c.id === id);
+  if (clip) clip.label = val.trim() || clip.label;
 }
 
 function deleteClip(id) {
@@ -2542,50 +2623,25 @@ function killLastClip() {
   deleteClip(recClips[recClips.length - 1].id);
 }
 
-// ── Review panel ──
-function openReviewPanel() {
-  renderReviewPanel();
-  document.getElementById('review-panel').classList.add('visible');
-}
-
-function closeReviewPanel() {
-  document.getElementById('review-panel').classList.remove('visible');
-}
-
-function renderReviewPanel() {
-  // No-op in v5.1 — review is inline in the recording panel
-}
-
-function toggleKeep(id, val) {
-  const clip = recClips.find(c => c.id === id);
-  if (clip) clip.keep = val;
-}
-
-function updateClipLabel(id, val) {
-  const clip = recClips.find(c => c.id === id);
-  if (clip) clip.label = val.trim() || clip.label;
-}
-
 async function downloadSelected() {
   const selected = recClips.filter(c => c.keep);
   if (!selected.length) {
     document.getElementById('review-status').textContent = 'No clips checked.';
     return;
   }
-  const blendPct = parseInt(document.getElementById('blend-slider').value) / 100;
+  const blendPct = blendValue / 100;
   let downloaded = 0;
   for (const clip of selected) {
     const fmt = document.querySelector(`input[name="fmt-${clip.id}"]:checked`);
-    const useBlend = fmt && fmt.value === 'blend' && clip.mode === 'withref' && audioEl;
+    const useBlend = fmt && fmt.value === 'blend' && clip.withRef && audioEl;
     if (useBlend) {
       await _downloadBlendClip(clip, blendPct);
     } else {
-      // Try saving to folder first, fall back to browser download
       const saved = await _saveClipToFolder(clip);
       if (!saved) {
         const a = document.createElement('a');
         a.href = clip.url;
-        a.download = clip.label + '.' + clip.ext;
+        a.download = clip.filename || (clip.label + '.' + clip.ext);
         a.click();
       }
     }
@@ -2601,95 +2657,6 @@ async function downloadSelected() {
   renderRecClips();
 }
 
-async function _downloadBlendClip(clip, blendPct) {
-  // blendPct: 0=ref only, 1=clip only
-  // Use OfflineAudioContext to mix the two streams
-  try {
-    const clipCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const arrayBuf = await clip.blob.arrayBuffer();
-    const clipBuffer = await clipCtx.decodeAudioData(arrayBuf);
-    clipCtx.close();
-
-    const sampleRate = clipBuffer.sampleRate;
-    const numChannels = clipBuffer.numberOfChannels;
-    const duration = clipBuffer.duration;
-    const frameCount = Math.ceil(duration * sampleRate);
-
-    const offlineCtx = new OfflineAudioContext(numChannels, frameCount, sampleRate);
-
-    // Clip source
-    const clipSrc = offlineCtx.createBufferSource();
-    clipSrc.buffer = clipBuffer;
-    const clipGain = offlineCtx.createGain();
-    clipGain.gain.value = blendPct;
-    clipSrc.connect(clipGain);
-    clipGain.connect(offlineCtx.destination);
-    clipSrc.start(0);
-
-    // Reference audio — decode a portion matching clip duration
-    if (audioBuffer && recStartOffset !== null) {
-      const startSample = Math.floor((recStartOffset + latencyOffset / 1000) * audioBuffer.sampleRate);
-      const endSample   = Math.min(audioBuffer.length, startSample + Math.ceil(duration * audioBuffer.sampleRate));
-      const refSlice    = offlineCtx.createBuffer(numChannels, frameCount, sampleRate);
-      for (let c = 0; c < numChannels; c++) {
-        const srcData = audioBuffer.getChannelData(Math.min(c, audioBuffer.numberOfChannels-1));
-        refSlice.getChannelData(c).set(srcData.subarray(startSample, endSample));
-      }
-      const refSrc  = offlineCtx.createBufferSource();
-      refSrc.buffer = refSlice;
-      const refGain = offlineCtx.createGain();
-      refGain.gain.value = 1 - blendPct;
-      refSrc.connect(refGain);
-      refGain.connect(offlineCtx.destination);
-      refSrc.start(0);
-    }
-
-    const rendered = await offlineCtx.startRendering();
-    // Convert to WAV for download
-    const wavBlob = _audioBufferToWav(rendered);
-    const wavUrl  = URL.createObjectURL(wavBlob);
-    const a = document.createElement('a');
-    a.href = wavUrl;
-    a.download = clip.label.replace(/\.\w+$/, '') + '_blend.wav';
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(wavUrl), 5000);
-  } catch(e) {
-    // Fallback to clip-only download
-    const a = document.createElement('a');
-    a.href = clip.url;
-    a.download = clip.label;
-    a.click();
-  }
-}
-
-function _audioBufferToWav(buffer) {
-  const numCh = buffer.numberOfChannels;
-  const sr = buffer.sampleRate;
-  const len = buffer.length;
-  const bytesPerSample = 2;
-  const blockAlign = numCh * bytesPerSample;
-  const byteRate = sr * blockAlign;
-  const dataSize = len * blockAlign;
-  const ab = new ArrayBuffer(44 + dataSize);
-  const view = new DataView(ab);
-  const write = (off, str) => { for(let i=0;i<str.length;i++) view.setUint8(off+i, str.charCodeAt(i)); };
-  write(0,'RIFF'); view.setUint32(4,36+dataSize,true); write(8,'WAVE');
-  write(12,'fmt '); view.setUint32(16,16,true); view.setUint16(20,1,true);
-  view.setUint16(22,numCh,true); view.setUint32(24,sr,true);
-  view.setUint32(28,byteRate,true); view.setUint16(32,blockAlign,true);
-  view.setUint16(34,bytesPerSample*8,true); write(36,'data');
-  view.setUint32(40,dataSize,true);
-  let offset = 44;
-  for (let i = 0; i < len; i++) {
-    for (let c = 0; c < numCh; c++) {
-      const s = Math.max(-1, Math.min(1, buffer.getChannelData(c)[i]));
-      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
-      offset += 2;
-    }
-  }
-  return new Blob([ab], { type: 'audio/wav' });
-}
-
 function onBlendSlider(val) {
   blendValue = parseInt(val);
   const refPct = 100 - blendValue, clipPct = blendValue;
@@ -2697,7 +2664,6 @@ function onBlendSlider(val) {
     blendValue === 50 ? '50/50' : `${refPct}/${clipPct}`;
 }
 
-// ── Review panel stubs (consolidated — no separate panel in v5.1) ──
 function openReviewPanel() {}
 function closeReviewPanel() {}
 
