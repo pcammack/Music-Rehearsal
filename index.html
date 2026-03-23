@@ -130,7 +130,38 @@ input[type=file]{display:none}
 .rec-no-clips{font-size:0.48rem;color:var(--text-faint);padding:0.3rem 0;text-align:center}
 .rec-warning{font-size:0.42rem;color:var(--text-faint);margin-top:0.3rem;line-height:1.7}
 
-/* ── INLINE RECORD BUTTONS (marker + segment rows) ── */
+/* ── MINI CLIP PLAYER ── */
+.clip-player{display:flex;flex-direction:column;gap:0.25rem;
+  padding:0.35rem 0;border-top:1px solid var(--border);margin-top:0.2rem}
+.clip-player-controls{display:flex;align-items:center;gap:0.4rem}
+.clip-play-btn{background:none;border:1px solid var(--border);color:var(--text-faint);
+  font-size:0.5rem;padding:0.15rem 0.4rem;cursor:pointer;transition:all 0.15s;
+  font-family:'JetBrains Mono',monospace;flex-shrink:0}
+.clip-play-btn:hover{border-color:var(--border-l);color:var(--text)}
+.clip-play-btn.playing{border-color:var(--accent);color:var(--accent)}
+.clip-time{font-size:0.42rem;color:var(--text-faint);min-width:4rem;white-space:nowrap}
+.clip-waveform-canvas{flex:1;height:36px;cursor:pointer;display:block;
+  background:var(--bg3);border:1px solid var(--border)}
+.clip-waveform-canvas:hover{border-color:var(--border-l)}
+
+/* ── CLIP ROW layout fix — ✕ always far right ── */
+.rec-clip-row{display:flex;flex-direction:column;gap:0;
+  padding:0.4rem 0.5rem;background:var(--bg3);border:1px solid var(--border);
+  margin-bottom:0.3rem}
+.rec-clip-top{display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap}
+.rec-clip-top .rec-clip-btn.delete{margin-left:auto}
+
+/* ── FIX: ✕ far right in all row types ── */
+.marker-row .marker-btn.delete{margin-left:auto}
+.loop-row .loop-btn.delete{margin-left:auto}
+
+/* ── BLEND TOGGLE refined ── */
+.blend-toggle{background:none;border:1px solid var(--border);color:var(--text-faint);
+  font-family:'JetBrains Mono',monospace;font-size:0.4rem;padding:0.08rem 0.35rem;
+  cursor:pointer;transition:all 0.15s;white-space:nowrap;letter-spacing:0.04em;
+  flex-shrink:0}
+.blend-toggle:hover{border-color:var(--border-l);color:var(--text)}
+.blend-toggle.active{background:var(--blue);border-color:var(--blue);color:#fff}
 .marker-btn.record{color:var(--red);opacity:0;transition:opacity 0.15s,color 0.15s}
 .marker-row:hover .marker-btn.record{opacity:1}
 .marker-btn.record:hover{color:#ff6b5b}
@@ -417,7 +448,7 @@ input[type=file]{display:none}
 <header>
   <div style="display:flex;align-items:center">
     <span class="app-name">Rehearsal Space</span>
-    <span class="app-ver">v5.2</span>
+    <span class="app-ver">v5.3</span>
   </div>
 </header>
 
@@ -646,9 +677,9 @@ input[type=file]{display:none}
       <span>Documentation</span><span id="docs-arrow">▸</span>
     </button>
     <div class="collapsible-body" id="docs-body">
-      <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v5.2</span>
+      <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v5.3</span>
 
-      <div class="doc-h">WHAT'S NEW IN v5.2</div>
+      <div class="doc-h">WHAT'S NEW IN v5.3</div>
       · <strong style="color:var(--text)">Unified recording:</strong> One recording model. ● on a marker records from that marker to the next. ● on a segment records the full segment. R with nothing selected records freely.<br>
       · <strong style="color:var(--text)">Take numbering:</strong> Multiple recordings of the same passage are labelled automatically — A→B take 1, A→B take 2.<br>
       · <strong style="color:var(--text)">Blend toggle per clip:</strong> Each loop-recorded clip has a blend toggle — switch instantly between yourself alone and yourself against the reference.<br>
@@ -2530,6 +2561,10 @@ async function _onRecordingStop(passLabel, withRef, nominalDuration) {
   renderRecClips();
 }
 
+// ── Per-clip waveform peaks cache ──
+const clipPeaks = {}; // clipId -> Float32Array of peaks
+const clipAudioEls = {}; // clipId -> HTMLAudioElement
+
 function renderRecClips() {
   const el = document.getElementById('rec-clip-list');
   const blendRow = document.getElementById('blend-row');
@@ -2545,59 +2580,216 @@ function renderRecClips() {
   if (dlRow) dlRow.style.display = 'flex';
 
   el.innerHTML = recClips.map(clip => {
-    const mins = Math.floor(clip.duration / 60);
-    const secs = Math.floor(clip.duration % 60);
-    const durStr = `${mins}:${secs.toString().padStart(2,'0')}`;
+    const durStr = _fmtClipDur(clip.duration);
     return `<div class="rec-clip-row" id="rec-clip-${clip.id}">
-      <div style="display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;margin-bottom:0.2rem">
+      <div class="rec-clip-top">
         <input type="checkbox" class="review-clip-check" id="chk-${clip.id}"
           onchange="toggleKeep(${clip.id},this.checked)" style="accent-color:var(--accent)">
-        <span style="font-size:0.5rem;color:var(--text);font-weight:500">${escHtml(clip.label)}</span>
-        <span class="rec-clip-dur">${durStr}</span>
+        <span style="font-size:0.5rem;color:var(--text);font-weight:500;flex:1;min-width:0;
+          overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(clip.label)}</span>
         ${clip.withRef ? `<button class="blend-toggle${clip.blendActive?' active':''}"
-          id="blend-toggle-${clip.id}"
-          onclick="toggleClipBlend(${clip.id})"
-          title="Toggle blend with reference">blend</button>` : ''}
+          id="blend-toggle-${clip.id}" onclick="toggleClipBlend(${clip.id})"
+          title="Blend with reference">blend</button>` : ''}
         <button class="rec-clip-btn delete" onclick="deleteClip(${clip.id})" title="Discard">✕</button>
       </div>
       <input class="review-label-input" value="${escHtml(clip.label)}"
-        placeholder="add label…"
-        onchange="updateClipLabel(${clip.id},this.value)"
-        style="margin-bottom:0.2rem;width:100%">
+        placeholder="add label…" onchange="updateClipLabel(${clip.id},this.value)"
+        style="width:100%;margin:0.15rem 0">
       ${clip.withRef ? `<div class="review-format-row">
         <label><input type="radio" name="fmt-${clip.id}" value="solo" checked> instrument only</label>
         <label><input type="radio" name="fmt-${clip.id}" value="blend"> with blend</label>
       </div>` : ''}
-      <audio class="rec-clip-audio" id="audio-${clip.id}" src="${clip.url}" controls preload="none"></audio>
+      <div class="clip-player" id="clip-player-${clip.id}">
+        <div class="clip-player-controls">
+          <button class="clip-play-btn" id="clip-btn-${clip.id}"
+            onclick="toggleClipPlay(${clip.id})">▶</button>
+          <canvas class="clip-waveform-canvas" id="clip-wave-${clip.id}"
+            onclick="seekClip(${clip.id}, event)"
+            title="Click to seek"></canvas>
+          <span class="clip-time" id="clip-time-${clip.id}">0:00 / ${durStr}</span>
+        </div>
+      </div>
     </div>`;
   }).join('');
+
+  // Decode waveforms and set up audio elements for each clip
+  recClips.forEach(clip => _initClipPlayer(clip));
 }
 
-// ── Blend toggle: play clip with reference underneath ──
+function _fmtClipDur(secs) {
+  const m = Math.floor(secs / 60);
+  const s = Math.floor(secs % 60);
+  return `${m}:${s.toString().padStart(2,'0')}`;
+}
+
+async function _initClipPlayer(clip) {
+  // Create or reuse audio element
+  if (!clipAudioEls[clip.id]) {
+    const a = new Audio();
+    a.src = clip.url;
+    a.preload = 'auto';
+    clipAudioEls[clip.id] = a;
+
+    a.addEventListener('timeupdate', () => _updateClipPlayhead(clip.id));
+    a.addEventListener('ended', () => {
+      const btn = document.getElementById(`clip-btn-${clip.id}`);
+      if (btn) { btn.textContent = '▶'; btn.classList.remove('playing'); }
+      _stopBlendRef(clip);
+      _drawClipWaveform(clip.id, 0);
+    });
+  }
+
+  // Decode peaks if not cached
+  if (!clipPeaks[clip.id]) {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const arrayBuf = await clip.blob.arrayBuffer();
+      const decoded = await ctx.decodeAudioData(arrayBuf);
+      ctx.close();
+      const BUCKETS = 200;
+      const data = decoded.getChannelData(0);
+      const n = data.length;
+      const peaks = new Float32Array(BUCKETS);
+      const step = n / BUCKETS;
+      for (let i = 0; i < BUCKETS; i++) {
+        const s = Math.floor(i * step), e = Math.floor((i + 1) * step);
+        let peak = 0;
+        for (let j = s; j < e; j++) { const v = Math.abs(data[j]); if (v > peak) peak = v; }
+        peaks[i] = peak;
+      }
+      // Normalise to 95th percentile
+      const sorted = peaks.slice().sort((a, b) => a - b);
+      const p95 = sorted[Math.floor(sorted.length * 0.95)] || 1;
+      for (let i = 0; i < BUCKETS; i++) peaks[i] = Math.min(1, peaks[i] / p95);
+      clipPeaks[clip.id] = peaks;
+    } catch(e) {
+      clipPeaks[clip.id] = new Float32Array(200).fill(0.3);
+    }
+  }
+  _drawClipWaveform(clip.id, 0);
+}
+
+function _drawClipWaveform(clipId, progress) {
+  // progress: 0.0–1.0 playhead position
+  const canvas = document.getElementById(`clip-wave-${clipId}`);
+  if (!canvas) return;
+  const peaks = clipPeaks[clipId];
+  if (!peaks) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = canvas.clientWidth || 200;
+  const H = canvas.clientHeight || 36;
+  if (canvas.width !== W * dpr || canvas.height !== H * dpr) {
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+  }
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W * dpr, H * dpr);
+  ctx.scale(dpr, dpr);
+
+  const playX = Math.floor(progress * W);
+  const BUCKETS = peaks.length;
+
+  for (let px = 0; px < W; px++) {
+    const b = Math.floor((px / W) * BUCKETS);
+    const peak = peaks[Math.min(b, BUCKETS - 1)];
+    const h = Math.max(2, peak * H * 0.88);
+    const y = (H - h) / 2;
+    ctx.fillStyle = px < playX ? '#c4922a' : '#2d2a26';
+    ctx.fillRect(px, y, 1, h);
+  }
+  // Playhead
+  if (progress > 0 && progress < 1) {
+    ctx.fillStyle = 'rgba(232,228,220,0.8)';
+    ctx.fillRect(playX, 0, 1, H);
+  }
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+}
+
+function _updateClipPlayhead(clipId) {
+  const a = clipAudioEls[clipId];
+  const clip = recClips.find(c => c.id === clipId);
+  if (!a || !clip) return;
+  const progress = clip.duration > 0 ? a.currentTime / clip.duration : 0;
+  _drawClipWaveform(clipId, progress);
+  const timeEl = document.getElementById(`clip-time-${clipId}`);
+  if (timeEl) {
+    timeEl.textContent = `${_fmtClipDur(a.currentTime)} / ${_fmtClipDur(clip.duration)}`;
+  }
+}
+
+function toggleClipPlay(clipId) {
+  const a = clipAudioEls[clipId];
+  const clip = recClips.find(c => c.id === clipId);
+  const btn = document.getElementById(`clip-btn-${clipId}`);
+  if (!a || !clip || !btn) return;
+
+  // Pause all other clips first
+  recClips.forEach(c => {
+    if (c.id !== clipId && clipAudioEls[c.id] && !clipAudioEls[c.id].paused) {
+      clipAudioEls[c.id].pause();
+      const b = document.getElementById(`clip-btn-${c.id}`);
+      if (b) { b.textContent = '▶'; b.classList.remove('playing'); }
+      _stopBlendRef(c);
+    }
+  });
+
+  if (a.paused) {
+    a.play().then(() => {
+      btn.textContent = '⏸';
+      btn.classList.add('playing');
+      if (clip.blendActive) _startBlendRef(clip, a.currentTime);
+    }).catch(() => {});
+  } else {
+    a.pause();
+    btn.textContent = '▶';
+    btn.classList.remove('playing');
+    _stopBlendRef(clip);
+  }
+}
+
+function seekClip(clipId, event) {
+  const a = clipAudioEls[clipId];
+  const clip = recClips.find(c => c.id === clipId);
+  const canvas = document.getElementById(`clip-wave-${clipId}`);
+  if (!a || !clip || !canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = event.clientX - rect.left;
+  const progress = Math.max(0, Math.min(1, x / rect.width));
+  a.currentTime = progress * clip.duration;
+  _drawClipWaveform(clipId, progress);
+  if (clip.blendActive) _startBlendRef(clip, a.currentTime);
+}
+
+// ── Blend reference playback — fixed ──
+function _startBlendRef(clip, clipCurrentTime) {
+  if (!audioBuffer || !audioEl) return;
+  // Calculate where in the reference track this point corresponds
+  const refPos = (clip.startOffset || 0) + clipCurrentTime + (latencyOffset / 1000);
+  const clampedRef = Math.max(0, Math.min(audioDuration, refPos));
+  audioEl.currentTime = trimOffset + clampedRef;
+  audioEl.volume = Math.max(0, Math.min(1, (100 - blendValue) / 100));
+  audioEl.preservesPitch = true;
+  audioEl.playbackRate = 1.0; // always 1:1 during blend monitoring
+  audioEl.play().catch(() => {});
+}
+
+function _stopBlendRef(clip) {
+  if (!audioEl) return;
+  audioEl.pause();
+  audioEl.volume = 1;
+}
+
 function toggleClipBlend(clipId) {
   const clip = recClips.find(c => c.id === clipId);
   if (!clip) return;
   clip.blendActive = !clip.blendActive;
   const btn = document.getElementById(`blend-toggle-${clipId}`);
   if (btn) btn.classList.toggle('active', clip.blendActive);
-  const audioEl2 = document.getElementById(`audio-${clipId}`);
-  if (!audioEl2) return;
-  if (clip.blendActive && audioBuffer && audioEl) {
-    // When this clip plays, also play reference at blend ratio from startOffset
-    audioEl2.onplay = () => {
-      const refStart = Math.max(0, (clip.startOffset||0) + latencyOffset/1000);
-      audioEl.currentTime = trimOffset + refStart;
-      audioEl.volume = (100 - blendValue) / 100;
-      audioEl.play().catch(()=>{});
-    };
-    audioEl2.onpause = () => { audioEl.pause(); audioEl.volume = 1; };
-    audioEl2.onended = () => { audioEl.pause(); audioEl.volume = 1; };
+  const a = clipAudioEls[clipId];
+  if (clip.blendActive && a && !a.paused) {
+    _startBlendRef(clip, a.currentTime);
   } else {
-    audioEl2.onplay = null;
-    audioEl2.onpause = null;
-    audioEl2.onended = null;
-    audioEl.pause();
-    audioEl.volume = 1;
+    _stopBlendRef(clip);
   }
 }
 
@@ -2613,7 +2805,17 @@ function updateClipLabel(id, val) {
 
 function deleteClip(id) {
   const clip = recClips.find(c => c.id === id);
-  if (clip) URL.revokeObjectURL(clip.url);
+  if (clip) {
+    URL.revokeObjectURL(clip.url);
+    _stopBlendRef(clip);
+  }
+  // Clean up audio element and peaks cache
+  if (clipAudioEls[id]) {
+    clipAudioEls[id].pause();
+    clipAudioEls[id].src = '';
+    delete clipAudioEls[id];
+  }
+  delete clipPeaks[id];
   recClips = recClips.filter(c => c.id !== id);
   renderRecClips();
 }
@@ -2652,12 +2854,101 @@ async function downloadSelected() {
     `✓ ${downloaded} clip${downloaded!==1?'s':''} saved`;
   selected.forEach(clip => {
     URL.revokeObjectURL(clip.url);
+    if (clipAudioEls[clip.id]) {
+      clipAudioEls[clip.id].pause();
+      clipAudioEls[clip.id].src = '';
+      delete clipAudioEls[clip.id];
+    }
+    delete clipPeaks[clip.id];
     recClips = recClips.filter(c => c.id !== clip.id);
   });
   renderRecClips();
 }
 
-function onBlendSlider(val) {
+async function _downloadBlendClip(clip, blendPct) {
+  // blendPct: 0=ref only, 1=clip only
+  try {
+    const clipCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const arrayBuf = await clip.blob.arrayBuffer();
+    const clipBuffer = await clipCtx.decodeAudioData(arrayBuf);
+    clipCtx.close();
+    const sampleRate = clipBuffer.sampleRate;
+    const numCh = clipBuffer.numberOfChannels;
+    const dur = clipBuffer.duration;
+    const frameCount = Math.ceil(dur * sampleRate);
+    const offCtx = new OfflineAudioContext(numCh, frameCount, sampleRate);
+    // Clip source
+    const clipSrc = offCtx.createBufferSource();
+    clipSrc.buffer = clipBuffer;
+    const clipGain = offCtx.createGain();
+    clipGain.gain.value = blendPct;
+    clipSrc.connect(clipGain);
+    clipGain.connect(offCtx.destination);
+    clipSrc.start(0);
+    // Reference source
+    if (audioBuffer && clip.startOffset !== null) {
+      const startSample = Math.floor(
+        Math.max(0, (clip.startOffset + latencyOffset / 1000)) * audioBuffer.sampleRate
+      );
+      const endSample = Math.min(audioBuffer.length, startSample + frameCount);
+      const refBuf = offCtx.createBuffer(numCh, frameCount, sampleRate);
+      for (let c = 0; c < numCh; c++) {
+        const src = audioBuffer.getChannelData(Math.min(c, audioBuffer.numberOfChannels - 1));
+        refBuf.getChannelData(c).set(src.subarray(startSample, endSample));
+      }
+      const refSrc = offCtx.createBufferSource();
+      refSrc.buffer = refBuf;
+      const refGain = offCtx.createGain();
+      refGain.gain.value = 1 - blendPct;
+      refSrc.connect(refGain);
+      refGain.connect(offCtx.destination);
+      refSrc.start(0);
+    }
+    const rendered = await offCtx.startRendering();
+    const wavBlob = _audioBufferToWav(rendered);
+    const wavUrl = URL.createObjectURL(wavBlob);
+    const a = document.createElement('a');
+    a.href = wavUrl;
+    a.download = (clip.filename || clip.label).replace(/\.\w+$/, '') + '_blend.wav';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(wavUrl), 5000);
+  } catch(e) {
+    // Fallback to clip-only
+    const a = document.createElement('a');
+    a.href = clip.url;
+    a.download = clip.filename || (clip.label + '.' + clip.ext);
+    a.click();
+  }
+}
+
+function _audioBufferToWav(buffer) {
+  const numCh = buffer.numberOfChannels;
+  const sr = buffer.sampleRate;
+  const len = buffer.length;
+  const bps = 2;
+  const blockAlign = numCh * bps;
+  const byteRate = sr * blockAlign;
+  const dataSize = len * blockAlign;
+  const ab = new ArrayBuffer(44 + dataSize);
+  const v = new DataView(ab);
+  const w = (off, str) => { for (let i = 0; i < str.length; i++) v.setUint8(off + i, str.charCodeAt(i)); };
+  w(0,'RIFF'); v.setUint32(4, 36 + dataSize, true); w(8,'WAVE');
+  w(12,'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true);
+  v.setUint16(22, numCh, true); v.setUint32(24, sr, true);
+  v.setUint32(28, byteRate, true); v.setUint16(32, blockAlign, true);
+  v.setUint16(34, bps * 8, true); w(36,'data'); v.setUint32(40, dataSize, true);
+  let offset = 44;
+  for (let i = 0; i < len; i++) {
+    for (let c = 0; c < numCh; c++) {
+      const s = Math.max(-1, Math.min(1, buffer.getChannelData(c)[i]));
+      v.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+      offset += 2;
+    }
+  }
+  return new Blob([ab], { type: 'audio/wav' });
+}
+
+
   blendValue = parseInt(val);
   const refPct = 100 - blendValue, clipPct = blendValue;
   document.getElementById('blend-val').textContent =
