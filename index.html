@@ -126,7 +126,7 @@ input[type=file]{display:none}
 
 .marker-col-header,.marker-row{
   display:grid;
-  grid-template-columns:16px 52px 48px 66px 20px 20px 20px 20px;
+  grid-template-columns:16px 52px 48px 66px 20px 20px 20px 20px 20px;
   gap:0.3rem;align-items:center}
 
 /* ── BAR NUMBER INPUT ── */
@@ -508,7 +508,7 @@ input[type=file]{display:none}
 <header>
   <div style="display:flex;align-items:center">
     <span class="app-name">Rehearsal Space</span>
-    <span class="app-ver">v5.7</span>
+    <span class="app-ver">v5.8</span>
   </div>
 </header>
 
@@ -625,11 +625,18 @@ input[type=file]{display:none}
         <div class="marker-col-header" id="marker-col-header">
           <span>#</span><span>Label</span>
           <span>Bar</span><span>Time</span>
-          <span>▶</span><span>⟳</span><span>T</span><span>●</span>
+          <span>►</span><span>⟳</span><span>T</span><span title="S=Structural / P=Performance">S/P</span><span>●</span><span>✕</span>
         </div>
         <div id="marker-list"></div>
+        <div style="display:flex;align-items:center;gap:0.35rem;padding-top:0.45rem;border-top:1px solid var(--border);margin-top:0.35rem">
+          <span style="font-size:0.4rem;color:var(--text-faint);letter-spacing:0.08em;white-space:nowrap">Add at</span>
+          <input id="mark-time-entry" class="marker-time-input" style="width:68px"
+            placeholder="m:ss.s" title="Enter time to place a mark"
+            onkeydown="if(event.key==='Enter'){addMarkAtTime();event.preventDefault()}">
+          <button class="btn-sm" onclick="addMarkAtTime()" style="font-size:0.4rem;padding:0.1rem 0.4rem">+ Mark</button>
+          <span style="font-size:0.38rem;color:var(--text-faint)">(<span id="mark-time-mode-hint" style="color:var(--accent)">S</span>)</span>
+        </div>
       </div>
-
     </div>
 
     <!-- Right column: Notes (top) + Takes (below) + keyboard ref -->
@@ -766,15 +773,16 @@ input[type=file]{display:none}
       <span>Documentation</span><span id="docs-arrow">▸</span>
     </button>
     <div class="collapsible-body" id="docs-body">
-      <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v5.7</span>
+      <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v5.8</span>
 
-      <div class="doc-h">WHAT'S NEW IN v5.7</div>
-      · <strong style="color:var(--text)">Structural / Performance modes — full implementation:</strong> Mode toggle above waveform and in Rehearsal marks panel, always in sync. Structural mode shows only gold structural marks on waveform and in list. Performance mode shows all marks, color-coded gold/blue.<br>
-      · <strong style="color:var(--text)">Smart loop on structural marks:</strong> ⟳ on a structural mark loops to the next structural mark, skipping all performance marks between them. Section-level looping always works regardless of how many performance marks exist inside.<br>
-      · <strong style="color:var(--text)">Armed loop recording:</strong> Pressing R while a loop is playing arms the recorder — current pass plays out, recording starts automatically on the next full pass. R while stopped starts immediately.<br>
-      · <strong style="color:var(--text)">Takes controls bar:</strong> Blend mix and sync offset now live at the top of the Takes panel as system-level controls, above all clips.<br>
-      · <strong style="color:var(--text)">Slower zoom:</strong> More granular zoom steps for precise waveform navigation.<br>
-      · Teacher note function removed.
+      <div class="doc-h">WHAT'S NEW IN v5.8</div>
+      · <strong style="color:var(--text)">Piece data now persists correctly:</strong> Marks, annotations, bar numbers, and piece notes all save automatically to the library. No more "↓ Save current" required for mid-session edits.<br>
+      · <strong style="color:var(--text)">Takes save as WAV:</strong> All recordings download as .wav files for universal DAW compatibility. The blend mix still exports as WAV too.<br>
+      · <strong style="color:var(--text)">Streamlined take naming:</strong> Each clip shows an editable name field — the name is the filename. Edit before saving. No prompt dialogs.<br>
+      · <strong style="color:var(--text)">M key is now mode-aware:</strong> Pressing M in Performance mode drops a performance mark (blue). Structural mode drops a structural mark (gold). Previously M always dropped structural.<br>
+      · <strong style="color:var(--text)">S/P toggle on each mark:</strong> The S/P button on every marker row switches it between Structural and Performance without leaving the panel.<br>
+      · <strong style="color:var(--text)">Add mark by time:</strong> Type a timestamp (m:ss or seconds) at the bottom of the Marks panel and press Enter or + Mark. Type reflects current mode.<br>
+      · <strong style="color:var(--text)">Zoom anchored to cursor:</strong> Scrolling to zoom now keeps the position under your cursor fixed, not the center of the view.
 
       <div class="doc-h">FUTURE FEATURES</div>
       · Blend playback (reference + clip mix with crossfade slider)<br>
@@ -1164,22 +1172,35 @@ function updateZoomLabel() {
   // zoom-val display removed; zoom level tracked internally only
 }
 
-function _applyZoom(newZoom, centerTime) {
-  zoomLevel = newZoom;
-  if (zoomLevel <= 1) { viewStart = 0; viewEnd = audioDuration; zoomLevel = 1; }
-  else {
-    const win = audioDuration / zoomLevel;
-    viewStart = Math.max(0, centerTime - win/2);
-    viewEnd   = viewStart + win;
-    if (viewEnd > audioDuration) { viewEnd = audioDuration; viewStart = Math.max(0, viewEnd - win); }
+function _applyZoom(newZoom, pivotTime) {
+  // Clamp zoom
+  newZoom = Math.max(1, newZoom);
+  if (newZoom <= 1) {
+    zoomLevel = 1; viewStart = 0; viewEnd = audioDuration;
+    updateZoomLabel(); drawOverview(); return;
   }
+  // Fraction of current view that the pivot sits at (0..1)
+  const currentSpan = viewEnd - viewStart;
+  const fraction = currentSpan > 0 ? (pivotTime - viewStart) / currentSpan : 0.5;
+  // New window width
+  const newSpan = audioDuration / newZoom;
+  // New viewStart so that pivotTime stays at the same fraction
+  let newStart = pivotTime - fraction * newSpan;
+  let newEnd   = newStart + newSpan;
+  // Clamp to audio bounds
+  if (newStart < 0)              { newStart = 0; newEnd = newSpan; }
+  if (newEnd > audioDuration)    { newEnd = audioDuration; newStart = Math.max(0, newEnd - newSpan); }
+  viewStart = newStart;
+  viewEnd   = newEnd;
+  zoomLevel = newZoom;
   updateZoomLabel(); drawOverview();
 }
 
 function zoomOverview(dir) {
+  const center = (viewStart + viewEnd) / 2;
   const idx = ZOOM_STEPS.findIndex(s => s >= zoomLevel - 0.01);
   const newIdx = Math.max(0, Math.min(ZOOM_STEPS.length-1, idx+dir));
-  _applyZoom(ZOOM_STEPS[newIdx], (viewStart+viewEnd)/2);
+  _applyZoom(ZOOM_STEPS[newIdx], center);
 }
 function resetZoom() { _applyZoom(1, audioDuration/2); }
 
@@ -1471,6 +1492,9 @@ function tapMarker(type) {
 function setMarkMode(mode) {
   markMode = mode;
   const isStructural = mode === 'structural';
+  // Update time-entry hint
+  const hint = document.getElementById('mark-time-mode-hint');
+  if (hint) { hint.textContent = isStructural ? 'S' : 'P'; hint.style.color = isStructural ? 'var(--accent)' : 'var(--blue)'; }
 
   // Update all toggle buttons (waveform bar + marks panel)
   ['btn-mode-structural', 'wv-btn-structural'].forEach(id => {
@@ -1563,6 +1587,22 @@ function updateMarkerLabel(id, val) {
   saveSession();
 }
 
+function addMarkAtTime() {
+  const input = document.getElementById('mark-time-entry');
+  if (!input || !audioBuffer) return;
+  const val = input.value.trim();
+  const parts = val.split(':');
+  let t = 0;
+  if (parts.length === 2) t = parseFloat(parts[0]) * 60 + parseFloat(parts[1]);
+  else t = parseFloat(val);
+  if (!isFinite(t) || t < 0) { input.focus(); return; }
+  t = Math.max(0, Math.min(audioDuration, t));
+  const type = markMode === 'structural' ? 'R' : 'D';
+  addMarker(null, type, t);
+  input.value = '';
+  input.focus();
+}
+
 function updateMarkerTime(id, val) {
   pushUndo();
   const parts = val.split(':');
@@ -1652,6 +1692,7 @@ function renderMarkers() {
       <button class="marker-btn" onclick="previewFromMarker(${m.id})" title="Play from here">▶</button>
       <button class="marker-btn${isQLS?' quick-loop-start':''}" onclick="markerLoopToNext(${m.id})" title="Loop to next ${isStructuralMark?'structural ':''}mark">⟳</button>
       <button class="marker-btn" onclick="openTempoTrainingFromMarker(${m.id})" title="Open Woodshed">T</button>
+      <button class="marker-btn" onclick="toggleMarkerType(${m.id})" title="${isStructuralMark?'Structural — click to make Performance':'Performance — click to make Structural'}" style="color:${isStructuralMark?'var(--accent)':'var(--blue)'}">S</button>
       <button class="marker-btn record" onclick="recordFromMarker(${m.id})" title="Record from here">●</button>
       <button class="marker-btn delete"
         onclick="removeMarker(${m.id})" title="Remove">✕</button>
@@ -1970,6 +2011,8 @@ function saveSession() {
     document.body.appendChild(el);
     el.addEventListener('animationend', () => el.remove());
   } catch(e) {}
+  // Sync back to named library entry so piece-level edits persist
+  if (currentPieceName) _autosaveToLibrary();
   // Also write to folder if connected
   if (rsRootHandle && currentPieceName) {
     const notes = document.getElementById('piece-notes')
@@ -1983,6 +2026,31 @@ function saveSession() {
     };
     _saveSessionToFolder(currentPieceName, sessionData, notes).catch(() => {});
   }
+}
+
+// Silently sync current state back into mr_sessions_v4 so all edits persist.
+// Called after every saveSession() when a named piece is active.
+let _autosaveTimer = null;
+function _autosaveToLibrary() {
+  clearTimeout(_autosaveTimer);
+  _autosaveTimer = setTimeout(async () => {
+    try {
+      const sessions = await loadSessionsFromStorage();
+      if (!sessions[currentPieceName]) return; // piece not yet in library; skip
+      sessions[currentPieceName] = {
+        ...sessions[currentPieceName],
+        pieceName: currentPieceName,
+        audioFileName, audioDuration,
+        markers: markers.map(m => ({...m})),
+        segments: segments.map(s => ({...s})),
+        markerIdCounter, segmentIdCounter,
+        notes: document.getElementById('piece-notes')
+          ? document.getElementById('piece-notes').value : '',
+        savedAt: Date.now()
+      };
+      await saveSessionsToStorage(sessions);
+    } catch(e) {}
+  }, 800); // debounce: wait 800ms after last edit
 }
 
 function loadSession() {
@@ -2849,11 +2917,20 @@ function renderRecClips() {
 
   el.innerHTML = recClips.map(clip => {
     const durStr = _fmtClipDur(clip.duration);
+    const displayName = clip.customName || clip.filename.replace(/\.\w+$/, '');
     return `<div class="rec-clip-row" id="rec-clip-${clip.id}">
       <div class="rec-clip-header">
         <input type="checkbox" class="review-clip-check" id="chk-${clip.id}"
           onchange="toggleKeep(${clip.id},this.checked)" style="accent-color:var(--accent);flex-shrink:0">
-        <span class="rec-clip-name">${escHtml(clip.label)}</span>
+        <input class="rec-clip-name-input" id="clip-name-${clip.id}"
+          value="${escHtml(displayName)}"
+          onchange="updateClipName(${clip.id},this.value)"
+          title="Take name — becomes the filename"
+          style="flex:1;min-width:0;background:none;border:none;border-bottom:1px solid var(--border);
+            color:var(--text);font-family:'JetBrains Mono',monospace;font-size:0.5rem;
+            padding:0.05rem 0;outline:none;transition:border-color 0.15s"
+          onfocus="this.style.borderBottomColor='var(--accent)'"
+          onblur="this.style.borderBottomColor='var(--border)'">
         ${clip.withRef ? `<button class="blend-toggle${clip.blendActive?' active':''}"
           id="blend-toggle-${clip.id}" onclick="toggleClipBlend(${clip.id})"
           title="Toggle blend with reference">blend</button>` : ''}
@@ -2866,7 +2943,7 @@ function renderRecClips() {
           onclick="toggleClipPlay(${clip.id})">▶</button>
         <span class="clip-time" id="clip-time-${clip.id}">0:00 / ${durStr}</span>
         <button class="clip-save-btn" onclick="saveOneClip(${clip.id})"
-          title="Save this clip">⬇ save</button>
+          title="Save as WAV (name from field above)">⬇ save .wav</button>
       </div>
       ${clip.withRef ? `<div class="review-format-row" style="margin-top:0.2rem">
         <label><input type="radio" name="fmt-${clip.id}" value="solo" checked> instrument only</label>
@@ -2876,6 +2953,11 @@ function renderRecClips() {
   }).join('');
 
   recClips.forEach(clip => _initClipPlayer(clip));
+}
+
+function updateClipName(id, val) {
+  const clip = recClips.find(c => c.id === id);
+  if (clip) clip.customName = val.trim();
 }
 
 async function _initClipPlayer(clip) {
@@ -3106,13 +3188,7 @@ async function saveOneClip(id) {
   if (useBlend) {
     await _downloadBlendClip(clip, blendValue / 100);
   } else {
-    const saved = await _saveClipToFolder(clip);
-    if (!saved) {
-      const a = document.createElement('a');
-      a.href = clip.url;
-      a.download = clip.filename || (clip.label + '.' + (clip.ext||'webm'));
-      a.click();
-    }
+    await _downloadClipAsWav(clip);
   }
   // Release after save
   URL.revokeObjectURL(clip.url);
@@ -3120,6 +3196,32 @@ async function saveOneClip(id) {
   delete clipPeaks[id];
   recClips = recClips.filter(c => c.id !== id);
   renderRecClips();
+}
+
+// Convert clip blob to WAV and trigger download
+async function _downloadClipAsWav(clip) {
+  try {
+    const ctx2 = new (window.AudioContext || window.webkitAudioContext)();
+    const arrayBuf = await clip.blob.arrayBuffer();
+    const decoded = await ctx2.decodeAudioData(arrayBuf);
+    ctx2.close();
+    const wavBlob = _audioBufferToWav(decoded);
+    const wavUrl = URL.createObjectURL(wavBlob);
+    const a = document.createElement('a');
+    a.href = wavUrl;
+    // Use custom name if set, else auto-generated name, always .wav
+    const baseName = (clip.customName || clip.filename || clip.label).replace(/\.\w+$/, '');
+    a.download = baseName + '.wav';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(wavUrl), 5000);
+  } catch(e) {
+    // Fallback to native format
+    const a = document.createElement('a');
+    a.href = clip.url;
+    const baseName = (clip.customName || clip.filename || clip.label).replace(/\.\w+$/, '');
+    a.download = baseName + '.' + (clip.ext || 'webm');
+    a.click();
+  }
 }
 
 async function downloadSelected() {
@@ -3136,16 +3238,10 @@ async function downloadSelected() {
     if (useBlend) {
       await _downloadBlendClip(clip, blendPct);
     } else {
-      const saved = await _saveClipToFolder(clip);
-      if (!saved) {
-        const a = document.createElement('a');
-        a.href = clip.url;
-        a.download = clip.filename || (clip.label + '.' + clip.ext);
-        a.click();
-      }
+      await _downloadClipAsWav(clip);
     }
     downloaded++;
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise(r => setTimeout(r, 400));
   }
   document.getElementById('review-status').textContent =
     `✓ ${downloaded} clip${downloaded!==1?'s':''} saved`;
@@ -3817,7 +3913,7 @@ document.addEventListener('keydown', e => {
   const tag = document.activeElement.tagName;
   if (tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT') return;
   if (e.code==='Space') { e.preventDefault(); togglePlay(); }
-  if (e.code==='KeyM' && audioBuffer) { tapMarker('R'); }
+  if (e.code==='KeyM' && audioBuffer) { tapMarker(); }
   if (e.code==='KeyP' && audioBuffer) { e.preventDefault(); playToNextMarker(); }
   if (e.code==='Home') { e.preventDefault(); goToStart(); }
   if (e.code==='ArrowLeft'  && audioBuffer) { e.preventDefault(); skipAudio(-5); }
