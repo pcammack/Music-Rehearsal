@@ -518,7 +518,7 @@ input[type=file]{display:none}
 <header>
   <div style="display:flex;align-items:center">
     <span class="app-name">Rehearsal Space</span>
-    <span class="app-ver">v6.1</span>
+    <span class="app-ver">v6.2</span>
   </div>
 </header>
 
@@ -817,6 +817,19 @@ input[type=file]{display:none}
         <button class="btn-sm" onclick="saveSessionToStorage()">↓ Save current</button>
       </div>
     </div>
+    <!-- Manual piece-data load / save row -->
+    <div style="display:flex;gap:0.35rem;flex-wrap:wrap;padding:0.3rem 0.5rem;border-bottom:1px solid var(--border);align-items:center">
+      <span style="font-size:0.52rem;color:var(--text-dim);flex:0 0 auto">Piece data:</span>
+      <button class="btn-sm" onclick="manualSavePieceData()" title="Save current piece markers + notes to a JSON file">↓ Save piece</button>
+      <label style="display:inline-block;flex:0 0 auto">
+        <span class="btn-sm" style="display:inline-block;cursor:pointer" title="Load piece markers + notes from a previously saved JSON file">↑ Load piece JSON</span>
+        <input type="file" id="piece-json-input" accept=".json" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" onchange="manualLoadPieceJSON(this.files[0])">
+      </label>
+      <label style="display:inline-block;flex:0 0 auto">
+        <span class="btn-sm" style="display:inline-block;cursor:pointer" title="Load piece notes from a plain text (.txt) file">↑ Load notes .txt</span>
+        <input type="file" id="piece-txt-input" accept=".txt,text/plain" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" onchange="manualLoadPieceTxt(this.files[0])">
+      </label>
+    </div>
     <!-- Import feedback -->
     <div class="import-notice" id="import-notice"></div>
     <div id="sessions-list"><span class="lib-empty">No pieces saved yet.</span></div>
@@ -837,16 +850,12 @@ input[type=file]{display:none}
       <span>Documentation</span><span id="docs-arrow">▸</span>
     </button>
     <div class="collapsible-body" id="docs-body">
-      <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v6.1</span>
+      <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v6.2</span>
 
-      <div class="doc-h">WHAT'S NEW IN v6.1</div>
-      · <strong style="color:var(--text)">Piece data now persists correctly:</strong> Marks, annotations, bar numbers, and piece notes all save automatically to the library. No more "↓ Save current" required for mid-session edits.<br>
-      · <strong style="color:var(--text)">Takes save as WAV:</strong> All recordings download as .wav files for universal DAW compatibility. The blend mix still exports as WAV too.<br>
-      · <strong style="color:var(--text)">Streamlined take naming:</strong> Each clip shows an editable name field — the name is the filename. Edit before saving. No prompt dialogs.<br>
-      · <strong style="color:var(--text)">M key is now mode-aware:</strong> Pressing M in Performance mode drops a performance mark (blue). Structural mode drops a structural mark (gold). Previously M always dropped structural.<br>
-      · <strong style="color:var(--text)">S/P toggle on each mark:</strong> The S/P button on every marker row switches it between Structural and Performance without leaving the panel.<br>
-      · <strong style="color:var(--text)">Add mark by time:</strong> Type a timestamp (m:ss or seconds) at the bottom of the Marks panel and press Enter or + Mark. Type reflects current mode.<br>
-      · <strong style="color:var(--text)">Zoom anchored to cursor:</strong> Scrolling to zoom now keeps the position under your cursor fixed, not the center of the view.
+      <div class="doc-h">WHAT'S NEW IN v6.2</div>
+      · <strong style="color:var(--text)">Performance marks never autonumber:</strong> Adding a performance mark no longer triggers renumbering of structural marks. Autonumbering and cascade are now scoped exclusively to structural marks (type R).<br>
+      · <strong style="color:var(--text)">Recordings stay in sync at non-100% speed:</strong> Clips now store the playback rate at which they were recorded. The mini-player, mixer, and blend reference all match that speed, so a take recorded at 75% reviews correctly at 75%.<br>
+      · <strong style="color:var(--text)">Manual piece data save/load:</strong> Three new buttons in the Repertoire panel — <em>↓ Save piece</em> (exports current markers + notes to a dated JSON), <em>↑ Load piece JSON</em> (restores markers and passages from a saved file), and <em>↑ Load notes .txt</em> (loads notes from a plain text file). Useful for data recovery and version protection.
 
       <div class="doc-h">FUTURE FEATURES</div>
       <div style="color:var(--accent);font-size:0.4rem;letter-spacing:0.1em;margin:0.3rem 0 0.1rem">NEAR-TERM — contained, low risk</div>
@@ -1595,6 +1604,7 @@ function cascadeAfter(fromIdx, prevLabel) {
   const family = _labelFamily(prevLabel);
   let lbl = prevLabel;
   for (let i = fromIdx+1; i < markers.length; i++) {
+    if (markers[i].type === 'D') continue;   // never renumber performance marks
     if (isPlaceholder(markers[i].label)) continue;
     // Only cascade within same naming family
     if (_labelFamily(markers[i].label) !== family) break;
@@ -1621,26 +1631,32 @@ function addMarker(label, type, time) {
     }
   }
 
-  markers.push({ id: markerIdCounter++, label: label || defaultLabel, type: type||'R', time, locked: false, snappedTo: snappedTo || null });
+  const resolvedType = type || 'R';
+  markers.push({ id: markerIdCounter++, label: label || defaultLabel, type: resolvedType, time, locked: false, snappedTo: snappedTo || null });
   markers.sort((a,b)=>a.time-b.time);
   const insertIdx = markers.findIndex(m => m.time === time && (m.label === label || m.label === '.'));
 
-  if (label) {
-    // Explicit label provided — cascade within family from insert point
-    if (!isPlaceholder(label)) cascadeAfter(insertIdx, label);
-  } else {
-    // Auto-label: only append at end gets auto-incremented label
-    // If inserting in middle, use placeholder
-    const isAtEnd = insertIdx === markers.length - 1;
-    if (isAtEnd) {
-      // Find last non-placeholder before this
-      const prevNonPh = markers.slice(0, insertIdx).filter(m => !isPlaceholder(m.label));
-      const autoLbl = prevNonPh.length ? nextLabel(prevNonPh[prevNonPh.length-1].label) : '1';
-      markers[insertIdx].label = autoLbl;
-      cascadeAfter(insertIdx, autoLbl);
+  // Performance marks (type 'D') never get autonumbered and never trigger cascade.
+  // Autonumbering and cascade only apply to structural marks (type 'R').
+  if (resolvedType !== 'D') {
+    if (label) {
+      // Explicit label provided — cascade within family from insert point (structural only)
+      if (!isPlaceholder(label)) cascadeAfter(insertIdx, label);
+    } else {
+      // Auto-label: only append at end gets auto-incremented label
+      // If inserting in middle, use placeholder
+      const isAtEnd = insertIdx === markers.length - 1;
+      if (isAtEnd) {
+        // Find last non-placeholder structural mark before this
+        const prevNonPh = markers.slice(0, insertIdx).filter(m => !isPlaceholder(m.label) && m.type !== 'D');
+        const autoLbl = prevNonPh.length ? nextLabel(prevNonPh[prevNonPh.length-1].label) : '1';
+        markers[insertIdx].label = autoLbl;
+        cascadeAfter(insertIdx, autoLbl);
+      }
+      // else: leave as placeholder '.'
     }
-    // else: leave as placeholder '.'
   }
+  // Performance marks with no explicit label keep their defaultLabel ('') unchanged.
 
   renderMarkers();
   refreshSegmentDropdowns();
@@ -2641,6 +2657,108 @@ function importLibraryJSON(file) {
   document.getElementById('import-json-input').value = '';
 }
 
+// ── Manual piece data: save current piece to JSON ──
+function manualSavePieceData() {
+  if (!currentPieceName) { alert('No piece is currently loaded.'); return; }
+  const pieceData = {
+    version: 'rs_piece_v1',
+    savedAt: Date.now(),
+    pieceName: currentPieceName,
+    audioFileName,
+    audioDuration,
+    markers,
+    markerIdCounter,
+    segments,
+    segmentIdCounter,
+    notes: document.getElementById('piece-notes')?.value || ''
+  };
+  const blob = new Blob([JSON.stringify(pieceData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const safeName = currentPieceName.replace(/[^\\w-]/g, '_').slice(0, 40);
+  a.download = `${safeName}-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Manual piece data: load markers + notes from a saved piece JSON ──
+function manualLoadPieceJSON(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    let data;
+    try { data = JSON.parse(ev.target.result); }
+    catch(e) { alert('Could not parse file — check it is a valid piece JSON.'); return; }
+
+    if (!data || !Array.isArray(data.markers)) {
+      alert('Load failed: does not look like a piece data file (no markers array).'); return; }
+
+    const targetName = data.pieceName || currentPieceName;
+    if (!targetName) { alert('No piece is loaded and the file has no piece name.'); return; }
+
+    const confirmMsg = currentPieceName && currentPieceName !== targetName
+      ? `This file is for "${targetName}" but the current piece is "${currentPieceName}".\nLoad anyway and overwrite current piece data?`
+      : `Replace all markers, passages and notes for "${targetName}" with the file data?`;
+    if (!confirm(confirmMsg)) return;
+
+    // Apply data to in-memory state
+    markers = (data.markers || []).map(m => ({
+      id: m.id ?? 0, label: m.label || '.', type: m.type || 'R',
+      time: m.time || 0, locked: !!m.locked,
+      snappedTo: m.snappedTo || null,
+      annotation: m.annotation || null
+    }));
+    markerIdCounter = Math.max(data.markerIdCounter || 0, ...(markers.length ? markers.map(m => m.id + 1) : [0]));
+    segments = (data.segments || []).map(seg => ({
+      id: seg.id ?? 0, startId: seg.startId, endId: seg.endId,
+      name: seg.name || '', note: seg.note || '', include: seg.include !== false
+    }));
+    segmentIdCounter = Math.max(data.segmentIdCounter || 0, ...(segments.length ? segments.map(s => s.id + 1) : [0]));
+    if (data.notes !== undefined) {
+      const notesEl = document.getElementById('piece-notes');
+      if (notesEl) notesEl.value = data.notes;
+    }
+    if (!currentPieceName && targetName) {
+      currentPieceName = targetName;
+      _updatePieceTitle();
+    }
+
+    renderMarkers(); drawOverview(); renderSegments(); refreshSegmentDropdowns();
+    saveSession();
+
+    const notice = document.getElementById('import-notice');
+    if (notice) {
+      notice.textContent = `✓ Piece data loaded from file (${markers.length} marks, ${segments.length} passages)`;
+      notice.classList.add('visible');
+      setTimeout(() => notice.classList.remove('visible'), 5000);
+    }
+  };
+  reader.readAsText(file);
+  document.getElementById('piece-json-input').value = '';
+}
+
+// ── Manual piece data: load notes from a plain text file ──
+function manualLoadPieceTxt(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const text = ev.target.result || '';
+    if (!confirm(`Replace the current piece notes with the contents of "${file.name}"?`)) return;
+    const notesEl = document.getElementById('piece-notes');
+    if (notesEl) notesEl.value = text;
+    saveSession();
+    const notice = document.getElementById('import-notice');
+    if (notice) {
+      notice.textContent = `✓ Notes loaded from ${file.name}`;
+      notice.classList.add('visible');
+      setTimeout(() => notice.classList.remove('visible'), 5000);
+    }
+  };
+  reader.readAsText(file);
+  document.getElementById('piece-txt-input').value = '';
+}
+
 // ══════════════════════════════════════════════
 // TEMPO TRAINING
 // ══════════════════════════════════════════════
@@ -2914,8 +3032,9 @@ function _mixerPlay(clip) {
     if (!mixer.refAudio) {
       mixer.refAudio = new Audio();
       mixer.refAudio.preservesPitch = true;
-      mixer.refAudio.playbackRate = 1.0;
     }
+    const refSpeed = clip.recordingSpeed || 1.0;
+    mixer.refAudio.playbackRate = refSpeed;
     mixer.refAudio.src = audioEl.src;
     const refPos = trimOffset + (clip.startOffset || 0) + (latencyOffset / 1000);
     mixer.refAudio.currentTime = Math.max(0, Math.min(audioDuration + trimOffset, refPos));
@@ -3291,6 +3410,7 @@ async function _onRecordingStop(passLabel, withRef, nominalDuration) {
     duration, withRef,
     passLabel, takeNum,
     startOffset: recStartOffset,
+    recordingSpeed: currentSpeed,   // speed at which the reference was playing during this recording
     ext, keep: false,
     blendActive: false
   };
@@ -3467,13 +3587,15 @@ function toggleClipPlay(clipId) {
     a.play().then(() => {
       btn.textContent = '⏸'; btn.classList.add('playing');
       // Always play reference alongside clip — positioned at recording start offset
+      // Use the speed at which the clip was recorded so playback stays in sync
       if (audioBuffer && audioEl) {
         const refPos = (clip.startOffset || 0) + a.currentTime + (latencyOffset / 1000);
         const clampedPos = Math.max(0, Math.min(audioDuration, refPos));
+        const refSpeed = clip.recordingSpeed || 1.0;
         audioEl.currentTime = trimOffset + clampedPos;
         audioEl.volume = 1;
         audioEl.preservesPitch = true;
-        audioEl.playbackRate = 1.0;
+        audioEl.playbackRate = refSpeed;
         audioEl.play().catch(() => {});
       }
     }).catch(() => {});
@@ -3511,7 +3633,7 @@ function _startBlendRef(clip, clipCurrentTime) {
   audioEl.currentTime = trimOffset + clampedPos;
   audioEl.volume = Math.max(0, Math.min(1, (100 - blendValue) / 100));
   audioEl.preservesPitch = true;
-  audioEl.playbackRate = 1.0;
+  audioEl.playbackRate = clip.recordingSpeed || 1.0;
   audioEl.play().catch(() => {});
 }
 
