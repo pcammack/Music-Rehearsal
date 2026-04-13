@@ -177,11 +177,6 @@ input[type=file]{display:none}
 .rec-clip-btn.delete:hover{color:var(--red)}
 .rec-no-clips{font-size:0.48rem;color:var(--text-faint);padding:0.3rem 0;text-align:center}
 .rec-warning{font-size:0.42rem;color:var(--text-faint);margin-top:0.35rem;line-height:1.7}
-.blend-toggle{background:none;border:1px solid var(--border);color:var(--text-faint);
-  font-family:'JetBrains Mono',monospace;font-size:0.4rem;padding:0.08rem 0.35rem;
-  cursor:pointer;transition:all 0.15s;white-space:nowrap;flex-shrink:0}
-.blend-toggle:hover{border-color:var(--border-l);color:var(--text)}
-.blend-toggle.active{background:var(--blue);border-color:var(--blue);color:#fff}
 
 /* ── INLINE RECORD BUTTONS (marker + segment rows) ── */
 .marker-btn.record{color:var(--red);opacity:0;transition:opacity 0.15s,color 0.15s}
@@ -191,12 +186,6 @@ input[type=file]{display:none}
 .loop-row:hover .loop-btn.record{opacity:1}
 .loop-btn.record:hover{color:#ff6b5b}
 
-/* ── BLEND TOGGLE on clip ── */
-.blend-toggle{background:none;border:1px solid var(--border);color:var(--text-faint);
-  font-family:'JetBrains Mono',monospace;font-size:0.4rem;padding:0.08rem 0.35rem;
-  cursor:pointer;transition:all 0.15s;white-space:nowrap;letter-spacing:0.04em}
-.blend-toggle:hover{border-color:var(--border-l);color:var(--text)}
-.blend-toggle.active{background:var(--blue);border-color:var(--blue);color:#fff}
 
 /* ── TAKE BADGE ── */
 .take-badge{font-size:0.38rem;color:var(--text-faint);white-space:nowrap}
@@ -229,13 +218,6 @@ input[type=file]{display:none}
 .rec-armed.visible{display:flex}
 .rec-armed-dot{width:6px;height:6px;border-radius:50%;background:var(--blue);
   animation:recPulse 1.2s ease-in-out infinite}
-
-/* ── BLEND CONTROLS ── */
-.blend-row{display:flex;align-items:center;gap:0.5rem;margin-top:0.4rem;
-  padding:0.4rem 0.5rem;background:var(--bg3);border:1px solid var(--border)}
-.blend-label{font-size:0.42rem;color:var(--text-faint);white-space:nowrap}
-.blend-slider{flex:1;accent-color:var(--accent);cursor:pointer}
-.blend-ends{font-size:0.4rem;color:var(--text-faint);white-space:nowrap}
 
 /* ── LATENCY CONTROL ── */
 .latency-row{display:flex;align-items:center;gap:0.5rem;padding:0.3rem 0;
@@ -350,7 +332,7 @@ input[type=file]{display:none}
 /* Loop rows: label | span | dur | ▶ | ⟳ | 🎯 | ✕ */
 .loop-col-header,.loop-row{
   display:grid;
-  grid-template-columns:18px 1fr 70px 46px 22px 22px 22px 22px 22px;
+  grid-template-columns:16px 18px 1fr 70px 46px 22px 22px 22px 22px 22px;
   gap:0.3rem;align-items:center}
 .passage-note-input{grid-column:1/-1}
 .loop-col-header{font-size:0.42rem;color:var(--text-faint);letter-spacing:0.1em;
@@ -380,6 +362,37 @@ input[type=file]{display:none}
 .loop-btn.delete:hover{color:var(--red)}
 .loop-empty{font-size:0.5rem;color:var(--text-faint);padding:0.5rem 0;text-align:center}
 
+
+/* ── LOOP COUNTER ── */
+.loop-counter-bar{display:flex;align-items:center;gap:0.5rem;padding:0.25rem 0.1rem;margin-bottom:0.2rem;font-size:0.44rem;color:var(--text-faint)}
+.loop-counter-num{font-size:0.72rem;font-weight:600;color:var(--accent);min-width:1.6rem;text-align:right;font-family:'JetBrains Mono',monospace}
+.loop-counter-reset{background:none;border:1px solid var(--border);color:var(--text-faint);font-family:'JetBrains Mono',monospace;font-size:0.38rem;padding:0.05rem 0.3rem;cursor:pointer;transition:all 0.15s;letter-spacing:0.05em}
+.loop-counter-reset:hover{border-color:var(--border-l);color:var(--text)}
+/* ── PASSAGE QUEUE ── */
+.queue-btn-bar{display:flex;align-items:center;gap:0.5rem;padding:0.25rem 0.1rem;margin-bottom:0.2rem;flex-wrap:wrap}
+.queue-play-btn{background:var(--green);border:1px solid var(--green);color:#fff;font-family:'JetBrains Mono',monospace;font-size:0.42rem;padding:0.1rem 0.5rem;cursor:pointer;letter-spacing:0.05em;transition:all 0.15s}
+.queue-play-btn.active{background:var(--accent);border-color:var(--accent)}
+.queue-rec-toggle{background:none;border:1px solid var(--border);color:var(--text-faint);font-family:'JetBrains Mono',monospace;font-size:0.42rem;padding:0.1rem 0.45rem;cursor:pointer;letter-spacing:0.04em;transition:all 0.15s}
+.queue-rec-toggle:hover{border-color:var(--border-l);color:var(--text)}
+.queue-rec-toggle.active{background:var(--red);border-color:var(--red);color:#fff}
+.queue-status{font-size:0.4rem;color:var(--text-faint);width:100%;padding-top:0.1rem}
+.queue-check{accent-color:var(--green);cursor:pointer;width:13px;height:13px;flex-shrink:0}
+.rep-stepper{display:inline-flex;align-items:center;gap:0;font-size:0.38rem;color:var(--text-faint);margin-left:0.2rem;vertical-align:middle}
+.rep-btn{background:none;border:1px solid var(--border);color:var(--text-faint);font-size:0.44rem;padding:0 0.22rem;cursor:pointer;line-height:1.4;transition:all 0.15s}
+.rep-btn:hover{border-color:var(--border-l);color:var(--text)}
+.rep-num{font-family:'JetBrains Mono',monospace;font-size:0.44rem;min-width:1rem;text-align:center;color:var(--text);padding:0 0.15rem;border-top:1px solid var(--border);border-bottom:1px solid var(--border);line-height:1.4}
+/* ── INPUT LEVEL METER ── */
+.level-meter-wrap{display:flex;align-items:center;gap:0.4rem;margin-top:0.2rem;margin-bottom:0.1rem;height:0;overflow:hidden;transition:height 0.2s}
+.level-meter-wrap.visible{height:1.2rem}
+.level-meter-track{flex:1;height:5px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;overflow:hidden}
+.level-meter-bar{height:100%;width:0%;background:var(--green);transition:width 0.05s;border-radius:2px}
+.level-meter-label{font-size:0.38rem;color:var(--text-faint);white-space:nowrap}
+/* ── INTENTION PROMPT ── */
+.intention-bar{display:flex;align-items:center;gap:0.4rem;padding:0.25rem 0;border-bottom:1px solid var(--border);margin-bottom:0.3rem}
+.intention-input{flex:1;background:none;border:none;border-bottom:1px solid var(--border-l);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:0.44rem;padding:0.05rem 0;outline:none;transition:border-color 0.15s}
+.intention-input:focus{border-bottom-color:var(--accent)}
+.intention-input::placeholder{color:var(--text-faint);font-style:italic}
+.intention-label{font-size:0.38rem;color:var(--text-faint);white-space:nowrap;letter-spacing:0.06em;text-transform:uppercase}
 /* ── NOTES (right column, fixed+scrollable) ── */
 .notes-panel{background:var(--bg2);border:1px solid var(--border);padding:0.65rem 0.8rem}
 .notes-textarea{width:100%;background:var(--bg3);border:1px solid var(--border);
@@ -442,9 +455,6 @@ input[type=file]{display:none}
   font-size:0.42rem;padding:0.1rem 0.35rem;cursor:pointer;transition:all 0.15s;
   font-family:'JetBrains Mono',monospace;white-space:nowrap;flex-shrink:0}
 .clip-save-btn:hover{border-color:var(--green);color:var(--green)}
-.rec-blend-bar{display:flex;align-items:center;gap:0.4rem;
-  padding:0.25rem 0 0;border-top:1px solid var(--border);margin-top:0.2rem}
-.rec-blend-label{font-size:0.4rem;color:var(--text-faint);white-space:nowrap}
 .import-notice{font-size:0.44rem;color:var(--green);padding:0.3rem 0;display:none}
 .import-notice.visible{display:block}
 /* ── SETTINGS COLLAPSIBLE ── */
@@ -523,7 +533,7 @@ input[type=file]{display:none}
 <header>
   <div style="display:flex;align-items:center">
     <span class="app-name">Rehearsal Space</span>
-    <span class="app-ver">v6.2</span>
+    <span class="app-ver">v6.4</span>
   </div>
 </header>
 
@@ -602,8 +612,18 @@ input[type=file]{display:none}
           <select class="seg-select" id="seg-end"><option value="">End…</option></select>
           <button class="btn-sm primary" onclick="addSegment()">+ Add</button>
         </div>
+        <div class="loop-counter-bar" id="loop-counter-bar" style="display:none">
+          <span>Loops:</span>
+          <span class="loop-counter-num" id="loop-counter-num">0</span>
+          <button class="loop-counter-reset" onclick="resetLoopCounter()">reset</button>
+        </div>
+        <div class="queue-btn-bar" id="queue-btn-bar" style="display:none">
+          <button class="queue-play-btn" id="queue-play-btn" onclick="togglePassageQueue()">▶ Play queue</button>
+          <button class="queue-rec-toggle" id="queue-rec-toggle" onclick="toggleQueueRecord()" title="Auto-record last rep of each passage">⬤ Rec off</button>
+          <span class="queue-status" id="queue-status"></span>
+        </div>
         <div class="loop-col-header" id="loop-col-header">
-          <span>★</span><span>Name</span><span>Span</span><span>Dur</span><span>▶</span><span>⟳</span><span>T</span><span>●</span><span>✕</span>
+          <span></span><span>★</span><span>Name</span><span>Span</span><span>Dur</span><span>▶</span><span>⟳</span><span>T</span><span>●</span><span>✕</span>
         </div>
         <div id="seg-list"></div>
       </div>
@@ -663,6 +683,12 @@ input[type=file]{display:none}
       <div class="right-panel">
         <div class="section-divider">
           <span>Notes</span>
+        </div>
+        <div class="intention-bar" id="intention-bar">
+          <span class="intention-label">Focus</span>
+          <input class="intention-input" id="intention-input" type="text"
+            placeholder="What are you listening for today?"
+            onchange="saveIntention(this.value)">
         </div>
         <textarea class="scratchpad-textarea" id="piece-notes"
           placeholder="Musical intentions, teacher feedback, phrasing ideas…"
@@ -725,6 +751,10 @@ input[type=file]{display:none}
             <span class="rec-ctrl-val" id="latency-val">0ms</span>
             <button class="btn-sm" onclick="stepLatency(5)" style="padding:0.08rem 0.3rem;font-size:0.4rem">+</button>
           </div>
+        </div>
+        <div class="level-meter-wrap" id="level-meter-wrap">
+          <span class="level-meter-label">mic</span>
+          <div class="level-meter-track"><div class="level-meter-bar" id="level-meter-bar"></div></div>
         </div>
         <div class="rec-controls" style="margin:0.2rem 0">
           <button class="btn-rec" id="btn-rec" onclick="toggleRecording()">● Record</button>
@@ -855,9 +885,19 @@ input[type=file]{display:none}
       <span>Documentation</span><span id="docs-arrow">▸</span>
     </button>
     <div class="collapsible-body" id="docs-body">
-      <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v6.2</span>
+      <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v6.4</span>
 
-      <div class="doc-h">WHAT'S NEW IN v6.2</div>
+      <div class="doc-h">WHAT'S NEW IN v6.4</div>
+      <div class="doc-p">
+        · <strong style="color:var(--text)">Passage queue:</strong> Checkbox on each passage to build a play queue. ▶ Play queue button runs through checked passages in chronological order, one pass each.<br>
+        · <strong style="color:var(--text)">Loop counter:</strong> Visible count of consecutive loop plays with a reset button. Appears when a loop is active.<br>
+        · <strong style="color:var(--text)">Input level monitor:</strong> Mic level bar appears when recording starts — confirms signal before committing to a take.<br>
+        · <strong style="color:var(--text)">Single-pass recording:</strong> ⊳ Single button next to Record — plays through once without looping.<br>
+        · <strong style="color:var(--text)">Clip speed badge:</strong> Recording tempo shown on each take in the Takes panel.<br>
+        · <strong style="color:var(--text)">Session focus prompt:</strong> "What are you listening for today?" field at the top of Notes, stored per piece.<br>
+        · <strong style="color:var(--text)">seekClip fix:</strong> Clip mini-player now correctly resumes at the recorded speed after seeking.<br>
+        · <strong style="color:var(--text)">Blend system removed:</strong> Live playback blend and its UI fully cleaned out. WAV download unchanged.
+      </div>
       · <strong style="color:var(--text)">Performance marks never autonumber:</strong> Adding a performance mark no longer triggers renumbering of structural marks. Autonumbering and cascade are now scoped exclusively to structural marks (type R).<br>
       · <strong style="color:var(--text)">Recordings stay in sync at non-100% speed:</strong> Clips now store the playback rate at which they were recorded. The mini-player, mixer, and blend reference all match that speed, so a take recorded at 75% reviews correctly at 75%.<br>
       · <strong style="color:var(--text)">Manual piece data save/load:</strong> Three new buttons in the Repertoire panel — <em>↓ Save piece</em> (exports current markers + notes to a dated JSON), <em>↑ Load piece JSON</em> (restores markers and passages from a saved file), and <em>↑ Load notes .txt</em> (loads notes from a plain text file). Useful for data recovery and version protection.
@@ -986,9 +1026,6 @@ function fmtTime(s) {
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-function sanitizeName(s) {
-  return (s||'').trim().replace(/[\\/:"*?<>|]/g,'').replace(/\s+/g,'_') || 'piece';
-}
 function isPlaceholder(label) { const t = String(label).trim(); return t === '.' || t === ''; }
 
 function toggleSection(id) {
@@ -1002,14 +1039,6 @@ function toggleSection(id) {
 // ══════════════════════════════════════════════
 // AUDIO FILE LOADING
 // ══════════════════════════════════════════════
-function onDragOver(e) { e.preventDefault(); }
-function onDragLeave(e) {}
-function onDrop(e) {
-  e.preventDefault();
-  const f = e.dataTransfer.files[0];
-  if (f) onAudioFile(f);
-}
-
 function _updateNoFileNotice() {
   const notice = document.getElementById('no-file-notice');
   const ef = document.getElementById('expected-filename');
@@ -1435,10 +1464,6 @@ function _pause() {
   renderLoops();
 }
 
-function _killSource() {
-  if (audioEl) { audioEl.pause(); }
-}
-
 function _currentAudioTime() {
   if (!audioEl || !isPlaying) return playOffset;
   return Math.min(Math.max(0, audioEl.currentTime - trimOffset), audioDuration);
@@ -1461,7 +1486,15 @@ function _animLoop() {
 function _onTimeUpdate() {
   if (loopStart !== null && loopEnd !== null && audioEl) {
     if (audioEl.currentTime >= loopEnd - 0.05) {
+      if (_queueActive) {
+        // Queue mode: let _onAudioEnded handle advancement — just stop here
+        if (isRecording) _stopRecording();
+        audioEl.currentTime = loopEnd + 0.01; // push past end to trigger ended event
+        return;
+      }
       audioEl.currentTime = loopStart;
+      loopCounter++;
+      _updateLoopCounter();
       // Trigger armed recording on loop restart
       if (recArmed && !isRecording) {
         recArmed = false;
@@ -1479,6 +1512,31 @@ function _onTimeUpdate() {
 
 function _onAudioEnded() {
   if (!isPlaying) return;
+  // Passage queue: rep-based advancement
+  if (_queueActive) {
+    _queueRepCount++;
+    const seg = _queueList[_queueIndex];
+    const totalReps = seg ? (seg.reps || 1) : 1;
+    if (_queueRepCount < totalReps) {
+      // More reps on this passage
+      const isLastRep = (_queueRepCount === totalReps - 1);
+      _updateQueueStatus();
+      _playQueuePass(seg, isLastRep);
+      return;
+    }
+    // Done with this passage — advance
+    _queueIndex++;
+    if (_queueIndex < _queueList.length) {
+      _queueRepCount = 0;
+      const next = _queueList[_queueIndex];
+      const isLastRep = ((next.reps || 1) === 1);
+      _updateQueueStatus();
+      _playQueuePass(next, isLastRep);
+      return;
+    } else {
+      _stopQueue();
+    }
+  }
   isPlaying = false;
   loopStart = null; loopEnd = null;
   if (previewingSegId !== null) {
@@ -1587,12 +1645,6 @@ function nextLabel(label) {
   const dm = s.match(/^(\d+)(.*)$/);
   if (dm) return (parseInt(dm[1])+1) + dm[2];
   return s;
-}
-
-function autoNextLabel() {
-  const nonPh = markers.filter(m => !isPlaceholder(m.label));
-  if (!nonPh.length) return '1';
-  return nextLabel(nonPh[nonPh.length-1].label);
 }
 
 function _labelFamily(label) {
@@ -1767,11 +1819,6 @@ function removeMarker(id) {
   saveSession();
 }
 
-function toggleLock(id) {
-  const m = markers.find(x=>x.id===id);
-  if (m) { m.locked = !m.locked; saveSession(); renderMarkers(); }
-}
-
 function toggleMarkerType(id) {
   const m = markers.find(x=>x.id===id);
   if (!m) return;
@@ -1819,13 +1866,6 @@ function updateMarkerTime(id, val) {
   renderMarkers(); drawOverview(); saveSession();
 }
 
-function updateMarkerBar(id, val) {
-  const m = markers.find(x=>x.id===id);
-  if (!m) return;
-  m.bar = val.trim();
-  saveSession();
-}
-
 function updateMarkerAnnotation(id, val) {
   const m = markers.find(x=>x.id===id);
   if (!m) return;
@@ -1839,14 +1879,6 @@ function updateMarkerAnnotation(id, val) {
   saveSession();
 }
 
-function toggleAnnotationTeacher(id) {
-  const m = markers.find(x=>x.id===id);
-  if (!m) return;
-  if (!m.annotation) m.annotation = { text:'', teacher:false, date:'' };
-  m.annotation.teacher = !m.annotation.teacher;
-  saveSession();
-  renderMarkers();
-}
 
 function renderMarkers() {
   const list   = document.getElementById('marker-list');
@@ -2120,6 +2152,7 @@ function renderLoops() {
     const em = markers.find(m=>m.id===seg.endId);
     if (!sm||!em) {
       return `<div class="loop-row" style="opacity:0.4" id="seg-row-${seg.id}">
+        <span></span>
         <span class="loop-label-input" style="font-style:italic;color:var(--red)">⚠ missing marker</span>
         <span class="loop-span"></span>
         <span class="loop-dur"></span>
@@ -2133,7 +2166,12 @@ function renderLoops() {
     const defaultName = `${sm.label} → ${em.label}`;
     const displayName = seg.name || defaultName;
     const hasNote = seg.note && seg.note.trim();
+    const isQueued = !!seg.queued;
     return `<div class="loop-row${isActive?' active-loop':''}${isStarred?' starred-loop':''}" id="seg-row-${seg.id}">
+      <span style="display:inline-flex;align-items:center">
+        <input type="checkbox" class="queue-check" id="qchk-${seg.id}" ${isQueued?'checked':''} onchange="togglePassageQueue_check(${seg.id},this.checked)" title="Add to play queue">
+        ${isQueued ? `<span class="rep-stepper"><button class="rep-btn" onclick="stepReps(${seg.id},-1)">−</button><span class="rep-num" id="repnum-${seg.id}">${seg.reps||1}</span><button class="rep-btn" onclick="stepReps(${seg.id},1)">+</button></span>` : ''}
+      </span>
       <button class="loop-btn star-btn${isStarred?' starred':''}" onclick="togglePassageStar(${seg.id})" title="${isStarred?'Remove star':'Star this passage'}">★</button>
       <input class="loop-label-input" value="${escHtml(displayName)}"
         placeholder="${escHtml(defaultName)}"
@@ -2156,6 +2194,10 @@ function renderLoops() {
   }).filter(Boolean).join('');
 
   drawOverview();
+  // Show queue button bar if any passages are checked
+  const anyQueued = segments.some(s => s.queued);
+  const qBar = document.getElementById('queue-btn-bar');
+  if (qBar) qBar.style.display = anyQueued ? 'flex' : 'none';
 }
 
 function updateLoopName(id, val) {
@@ -2180,6 +2222,8 @@ function toggleLoop(id) {
   if (activeLoopId === id) {
     activeLoopId = null;
     previewingSegId = null;
+    loopCounter = 0;
+    _updateLoopCounter();
     if (isPlaying) _pause();
   } else {
     activeLoopId = id;
@@ -2203,6 +2247,8 @@ function toggleLoop(id) {
 
 function _startLooping(startTime, endTime) {
   if (!audioEl || !audioBuffer) return;
+  loopCounter = 0;
+  _updateLoopCounter();
   cancelAnimationFrame(animFrame);
   playGen++;
   // Store loop boundary in file time (for _onTimeUpdate seamless repeat)
@@ -2302,6 +2348,7 @@ function loadSession() {
       segmentIdCounter = Math.max(s.segmentIdCounter||0, ...segments.map(s=>s.id+1));
     }
     if (s.notes) document.getElementById('piece-notes').value = s.notes;
+    loadIntention();
     if (s.audioFileName) {
       audioFileName = s.audioFileName;
       _updateNoFileNotice();
@@ -2964,7 +3011,6 @@ let recClips         = [];
 let recClipCounter   = 0;
 let isRecording      = false;
 let latencyOffset    = 0;
-let blendValue       = 50; // legacy, kept for WAV blend export
 
 // ── Mixer state ──
 const mixer = {
@@ -3168,6 +3214,12 @@ function mixerLoadClip(clipId) {
 
 // Take counters per passage label
 let takeCounts = {};
+let loopCounter = 0;        // visible loop count for current active loop
+let _queueActive   = false;  // passage queue running
+let _queueList     = [];     // sorted queued segments for current run
+let _queueIndex    = 0;      // current passage index in _queueList
+let _queueRepCount = 0;      // reps completed for current passage
+let _queueRecOn    = false;  // auto-record last rep toggle
 
 // Load persisted latency offset
 (function(){
@@ -3205,6 +3257,7 @@ async function _startRecordingPass(startTime, endTime, passLabel, withRef) {
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, sampleRate: 44100 }
     });
+    _startLevelMonitor(stream);
     const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
       ? 'audio/webm;codecs=opus'
       : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
@@ -3269,6 +3322,7 @@ async function _startFreeRecording() {
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, sampleRate: 44100 }
     });
+    _startLevelMonitor(stream);
     const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
       ? 'audio/webm;codecs=opus'
       : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
@@ -3299,6 +3353,7 @@ async function _startFreeRecording() {
 
 function _stopRecording() {
   if (!mediaRecorder || !isRecording) return;
+  _stopLevelMonitor();
   mediaRecorder.stop();
   mediaRecorder.stream.getTracks().forEach(t => t.stop());
   isRecording = false;
@@ -3430,7 +3485,6 @@ async function _onRecordingStop(passLabel, withRef, nominalDuration) {
     startOffset: recStartOffset,
     recordingSpeed: currentSpeed,   // speed at which the reference was playing during this recording
     ext, keep: false,
-    blendActive: false
   };
   recClips.push(clip);
   renderRecClips();
@@ -3472,9 +3526,6 @@ function renderRecClips() {
             padding:0.05rem 0;outline:none;transition:border-color 0.15s"
           onfocus="this.style.borderBottomColor='var(--accent)'"
           onblur="this.style.borderBottomColor='var(--border)'">
-        ${clip.withRef ? `<button class="blend-toggle${clip.blendActive?' active':''}"
-          id="blend-toggle-${clip.id}" onclick="toggleClipBlend(${clip.id})"
-          title="Toggle blend with reference">blend</button>` : ''}
         <button class="rec-clip-btn delete" onclick="deleteClip(${clip.id})" title="Discard">✕</button>
       </div>
       <canvas class="clip-waveform-canvas" id="clip-wave-${clip.id}"
@@ -3483,6 +3534,7 @@ function renderRecClips() {
         <button class="clip-play-btn" id="clip-btn-${clip.id}"
           onclick="toggleClipPlay(${clip.id})">▶</button>
         <span class="clip-time" id="clip-time-${clip.id}">0:00 / ${durStr}</span>
+        <span class="take-badge" title="Recorded at this tempo">${Math.round((clip.recordingSpeed||1)*100)}%</span>
         <button class="clip-save-btn" onclick="mixerLoadClip(${clip.id})"
           title="Load this clip into the mixer" style="color:var(--blue);border-color:var(--blue)">⇥ mix</button>
         <button class="clip-save-btn" onclick="saveOneClip(${clip.id})"
@@ -3510,7 +3562,6 @@ async function _initClipPlayer(clip) {
     a.addEventListener('ended', () => {
       const btn = document.getElementById(`clip-btn-${clip.id}`);
       if (btn) { btn.textContent = '▶'; btn.classList.remove('playing'); }
-      _stopBlendRef(clip);
       _drawClipWaveform(clip.id, 0);
     });
   }
@@ -3594,7 +3645,6 @@ function toggleClipPlay(clipId) {
       clipAudioEls[c.id].pause();
       const b = document.getElementById(`clip-btn-${c.id}`);
       if (b) { b.textContent = '▶'; b.classList.remove('playing'); }
-      _stopBlendRef(c);
     }
   });
 
@@ -3633,6 +3683,7 @@ function seekClip(clipId, event) {
   const rect = canvas.getBoundingClientRect();
   const progress = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
   a.currentTime = progress * clip.duration;
+  a.playbackRate = clip.recordingSpeed || 1.0;
   _drawClipWaveform(clipId, progress);
   // Reposition reference to match new clip position
   if (audioBuffer && audioEl && !a.paused) {
@@ -3641,73 +3692,19 @@ function seekClip(clipId, event) {
   }
 }
 
-function _startBlendRef(clip, clipCurrentTime) {
-  if (!audioBuffer || !audioEl) return;
-  // Position reference at where the clip was recorded from, offset by clip's current position
-  const refPos = (clip.startOffset || 0) + clipCurrentTime + (latencyOffset / 1000);
-  const clampedPos = Math.max(0, Math.min(audioDuration, refPos));
-  // Stop any current main playback first
-  if (isPlaying) _pause();
-  audioEl.currentTime = trimOffset + clampedPos;
-  audioEl.volume = Math.max(0, Math.min(1, (100 - blendValue) / 100));
-  audioEl.preservesPitch = true;
-  audioEl.playbackRate = clip.recordingSpeed || 1.0;
-  audioEl.play().catch(() => {});
-}
 
-function _stopBlendRef(clip) {
-  if (!audioEl) return;
-  audioEl.pause();
-  audioEl.volume = 1;
-}
 
-// ── Blend toggle ──
-function toggleClipBlend(clipId) {
-  const clip = recClips.find(c => c.id === clipId);
-  if (!clip) return;
-  clip.blendActive = !clip.blendActive;
-  const btn = document.getElementById(`blend-toggle-${clipId}`);
-  if (btn) btn.classList.toggle('active', clip.blendActive);
-  const a = clipAudioEls[clipId];
-  if (!a) return;
-  if (clip.blendActive) {
-    // If clip is already playing, start reference in sync now
-    if (!a.paused) _startBlendRef(clip, a.currentTime);
-    // Wire up future play events
-    a._blendOnPlay = () => _startBlendRef(clip, a.currentTime);
-    a._blendOnPause = () => _stopBlendRef(clip);
-    a._blendOnEnded = () => _stopBlendRef(clip);
-    a.addEventListener('play',  a._blendOnPlay);
-    a.addEventListener('pause', a._blendOnPause);
-    a.addEventListener('ended', a._blendOnEnded);
-  } else {
-    // Remove listeners and stop reference
-    if (a._blendOnPlay)  a.removeEventListener('play',  a._blendOnPlay);
-    if (a._blendOnPause) a.removeEventListener('pause', a._blendOnPause);
-    if (a._blendOnEnded) a.removeEventListener('ended', a._blendOnEnded);
-    a._blendOnPlay = a._blendOnPause = a._blendOnEnded = null;
-    _stopBlendRef(clip);
-  }
-}
 
 function toggleKeep(id, val) {
   const clip = recClips.find(c => c.id === id);
   if (clip) clip.keep = val;
 }
 
-function updateClipLabel(id, val) {
-  const clip = recClips.find(c => c.id === id);
-  if (clip) clip.label = val.trim() || clip.label;
-}
-
 function deleteClip(id) {
   const clip = recClips.find(c => c.id === id);
-  if (clip) { URL.revokeObjectURL(clip.url); _stopBlendRef(clip); }
+  if (clip) { URL.revokeObjectURL(clip.url); }
   if (clipAudioEls[id]) {
     const a = clipAudioEls[id];
-    if (a._blendOnPlay)  a.removeEventListener('play',  a._blendOnPlay);
-    if (a._blendOnPause) a.removeEventListener('pause', a._blendOnPause);
-    if (a._blendOnEnded) a.removeEventListener('ended', a._blendOnEnded);
     a.pause(); a.src = '';
     delete clipAudioEls[id];
   }
@@ -3724,13 +3721,7 @@ function killLastClip() {
 async function saveOneClip(id) {
   const clip = recClips.find(c => c.id === id);
   if (!clip) return;
-  const fmt = document.querySelector(`input[name="fmt-${id}"]:checked`);
-  const useBlend = fmt && fmt.value === 'blend' && clip.withRef && audioEl;
-  if (useBlend) {
-    await _downloadBlendClip(clip, blendValue / 100);
-  } else {
-    await _downloadClipAsWav(clip);
-  }
+  await _downloadClipAsWav(clip);
   // Release after save
   URL.revokeObjectURL(clip.url);
   if (clipAudioEls[id]) { clipAudioEls[id].pause(); clipAudioEls[id].src=''; delete clipAudioEls[id]; }
@@ -3771,16 +3762,9 @@ async function downloadSelected() {
     document.getElementById('review-status').textContent = 'No clips checked.';
     return;
   }
-  const blendPct = blendValue / 100;
   let downloaded = 0;
   for (const clip of selected) {
-    const fmt = document.querySelector(`input[name="fmt-${clip.id}"]:checked`);
-    const useBlend = fmt && fmt.value === 'blend' && clip.withRef && audioEl;
-    if (useBlend) {
-      await _downloadBlendClip(clip, blendPct);
-    } else {
-      await _downloadClipAsWav(clip);
-    }
+    await _downloadClipAsWav(clip);
     downloaded++;
     await new Promise(r => setTimeout(r, 400));
   }
@@ -3788,7 +3772,6 @@ async function downloadSelected() {
     `✓ ${downloaded} clip${downloaded!==1?'s':''} saved`;
   selected.forEach(clip => {
     URL.revokeObjectURL(clip.url);
-    _stopBlendRef(clip);
     if (clipAudioEls[clip.id]) {
       clipAudioEls[clip.id].pause();
       clipAudioEls[clip.id].src = '';
@@ -3800,60 +3783,6 @@ async function downloadSelected() {
   renderRecClips();
 }
 
-async function _downloadBlendClip(clip, blendPct) {
-  try {
-    const clipCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const arrayBuf = await clip.blob.arrayBuffer();
-    const clipBuffer = await clipCtx.decodeAudioData(arrayBuf);
-    clipCtx.close();
-    const sampleRate = clipBuffer.sampleRate;
-    const numCh = clipBuffer.numberOfChannels;
-    const dur = clipBuffer.duration;
-    const frameCount = Math.ceil(dur * sampleRate);
-    const offCtx = new OfflineAudioContext(numCh, frameCount, sampleRate);
-    // Clip source
-    const clipSrc = offCtx.createBufferSource();
-    clipSrc.buffer = clipBuffer;
-    const clipGain = offCtx.createGain();
-    clipGain.gain.value = blendPct;
-    clipSrc.connect(clipGain);
-    clipGain.connect(offCtx.destination);
-    clipSrc.start(0);
-    // Reference source — slice from recording start position
-    if (audioBuffer && clip.startOffset !== null) {
-      const startSample = Math.floor(
-        Math.max(0, (clip.startOffset + latencyOffset / 1000)) * audioBuffer.sampleRate
-      );
-      const refBuf = offCtx.createBuffer(numCh, frameCount, sampleRate);
-      for (let c = 0; c < numCh; c++) {
-        const src = audioBuffer.getChannelData(Math.min(c, audioBuffer.numberOfChannels - 1));
-        const endSample = Math.min(src.length, startSample + frameCount);
-        refBuf.getChannelData(c).set(src.subarray(startSample, endSample));
-      }
-      const refSrc = offCtx.createBufferSource();
-      refSrc.buffer = refBuf;
-      const refGain = offCtx.createGain();
-      refGain.gain.value = 1 - blendPct;
-      refSrc.connect(refGain);
-      refGain.connect(offCtx.destination);
-      refSrc.start(0);
-    }
-    const rendered = await offCtx.startRendering();
-    const wavBlob = _audioBufferToWav(rendered);
-    const wavUrl = URL.createObjectURL(wavBlob);
-    const a = document.createElement('a');
-    a.href = wavUrl;
-    a.download = (clip.filename || clip.label).replace(/\.\w+$/, '') + '_blend.wav';
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(wavUrl), 5000);
-  } catch(e) {
-    // Fallback: download clip only
-    const a = document.createElement('a');
-    a.href = clip.url;
-    a.download = clip.filename || (clip.label + '.' + (clip.ext||'webm'));
-    a.click();
-  }
-}
 
 function _audioBufferToWav(buffer) {
   const numCh = buffer.numberOfChannels;
@@ -3880,16 +3809,6 @@ function _audioBufferToWav(buffer) {
   }
   return new Blob([ab], { type: 'audio/wav' });
 }
-
-function onBlendSlider(val) {
-  blendValue = parseInt(val);
-  const refPct = 100 - blendValue, clipPct = blendValue;
-  document.getElementById('blend-val').textContent =
-    blendValue === 50 ? '50/50' : `${refPct}/${clipPct}`;
-}
-
-function openReviewPanel() {}
-function closeReviewPanel() {}
 
 // ── Session log ──
 const SESSION_LOG_KEY = 'mr_session_log_v1';
@@ -4506,6 +4425,204 @@ function _hitTestMarker(mouseX, canvasWidth, mouseY, canvasHeight) {
 // ══════════════════════════════════════════════
 // KEYBOARD
 // ══════════════════════════════════════════════
+
+// ── Loop counter ──
+function _updateLoopCounter() {
+  const bar = document.getElementById('loop-counter-bar');
+  const num = document.getElementById('loop-counter-num');
+  if (bar) bar.style.display = (activeLoopId !== null) ? 'flex' : 'none';
+  if (num) num.textContent = loopCounter;
+}
+
+function resetLoopCounter() {
+  loopCounter = 0;
+  _updateLoopCounter();
+}
+
+// ── Input level monitor ──
+let _levelAnimId = null;
+let _levelAnalyser = null;
+
+function _startLevelMonitor(stream) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const src = ctx.createMediaStreamSource(stream);
+    _levelAnalyser = ctx.createAnalyser();
+    _levelAnalyser.fftSize = 256;
+    src.connect(_levelAnalyser);
+    const data = new Uint8Array(_levelAnalyser.frequencyBinCount);
+    const bar = document.getElementById('level-meter-bar');
+    const wrap = document.getElementById('level-meter-wrap');
+    if (wrap) wrap.classList.add('visible');
+    function tick() {
+      _levelAnalyser.getByteFrequencyData(data);
+      const avg = data.reduce((s, v) => s + v, 0) / data.length;
+      const pct = Math.min(100, avg * 2.5);
+      if (bar) {
+        bar.style.width = pct + '%';
+        bar.style.background = pct > 75 ? 'var(--red)' : pct > 45 ? 'var(--accent)' : 'var(--green)';
+      }
+      _levelAnimId = requestAnimationFrame(tick);
+    }
+    tick();
+  } catch(e) {}
+}
+
+function _stopLevelMonitor() {
+  if (_levelAnimId) { cancelAnimationFrame(_levelAnimId); _levelAnimId = null; }
+  _levelAnalyser = null;
+  const bar  = document.getElementById('level-meter-bar');
+  const wrap = document.getElementById('level-meter-wrap');
+  if (bar)  bar.style.width = '0%';
+  if (wrap) wrap.classList.remove('visible');
+}
+
+// ── Passage queue ──
+function _segMarkersValid(seg) {
+  return !!(markers.find(m => m.id === seg.startId) && markers.find(m => m.id === seg.endId));
+}
+
+function _segDisplayName(seg) {
+  const sm = markers.find(m => m.id === seg.startId);
+  const em = markers.find(m => m.id === seg.endId);
+  return seg.name || (sm && em ? sm.label + '→' + em.label : '?');
+}
+
+function _updateQueueStatus() {
+  const seg = _queueList[_queueIndex];
+  if (!seg) return;
+  const totalReps = seg.reps || 1;
+  const repDisp = totalReps > 1 ? ` — ${_queueRepCount + 1}/${totalReps}` : '';
+  const passDisp = `${_queueIndex + 1}/${_queueList.length}: ${_segDisplayName(seg)}${repDisp}`;
+  document.getElementById('queue-status').textContent = passDisp;
+}
+
+function _playQueuePass(seg, isLastRep) {
+  const sm = markers.find(m => m.id === seg.startId);
+  const em = markers.find(m => m.id === seg.endId);
+  if (!sm || !em) { _onAudioEnded(); return; }
+  activeLoopId = seg.id;
+  previewingSegId = seg.id;
+  const segDur = em.time - sm.time;
+  const pad = segDur * 0.15;
+  viewStart = Math.max(0, sm.time - pad);
+  viewEnd   = Math.min(audioDuration, em.time + pad);
+  zoomLevel = audioDuration / (viewEnd - viewStart);
+  // Set loop boundaries but queue's _onTimeUpdate hook will stop it after one pass
+  loopStart = trimOffset + sm.time;
+  loopEnd   = trimOffset + em.time;
+  const displayStart = Math.max(0, sm.time - leadIn);
+  audioEl.currentTime = trimOffset + displayStart;
+  audioEl.playbackRate = currentSpeed;
+  audioEl.preservesPitch = true;
+  audioEl.play().catch(e => console.warn('Queue play failed:', e));
+  playOffset = displayStart; isPlaying = true;
+  queuePoint = displayStart; playStartedAt = Date.now();
+  document.getElementById('btn-play').textContent = '⏸ Pause';
+  document.getElementById('btn-play').classList.add('active');
+  cancelAnimationFrame(animFrame);
+  animFrame = requestAnimationFrame(_animLoop);
+  renderLoops();
+  // Auto-record last rep if toggle is on
+  if (isLastRep && _queueRecOn && audioBuffer) {
+    const passLabel = _segDisplayName(seg);
+    setTimeout(() => {
+      if (_queueActive && isPlaying) {
+        _startRecordingPass(sm.time, em.time, passLabel, true).catch(() => {});
+      }
+    }, Math.max(0, (leadIn / currentSpeed) * 1000));
+  }
+}
+
+function togglePassageQueue() {
+  if (_queueActive) { _stopQueue(); return; }
+  const queued = segments.filter(s => s.queued && _segMarkersValid(s))
+    .sort((a, b) => {
+      const ma = markers.find(m => m.id === a.startId);
+      const mb = markers.find(m => m.id === b.startId);
+      return (ma ? ma.time : 0) - (mb ? mb.time : 0);
+    });
+  if (!queued.length) {
+    document.getElementById('queue-status').textContent = 'No passages checked';
+    return;
+  }
+  _queueActive   = true;
+  _queueList     = queued;
+  _queueIndex    = 0;
+  _queueRepCount = 0;
+  const btn = document.getElementById('queue-play-btn');
+  if (btn) { btn.textContent = '■ Stop'; btn.classList.add('active'); }
+  _updateQueueStatus();
+  const firstSeg = queued[0];
+  const isLastRep = ((firstSeg.reps || 1) === 1);
+  _playQueuePass(firstSeg, isLastRep);
+}
+
+function _stopQueue() {
+  _queueActive   = false;
+  _queueList     = [];
+  _queueIndex    = 0;
+  _queueRepCount = 0;
+  const btn = document.getElementById('queue-play-btn');
+  if (btn) { btn.textContent = '▶ Play queue'; btn.classList.remove('active'); }
+  document.getElementById('queue-status').textContent = '';
+  if (isPlaying) _pause();
+  activeLoopId = null;
+  previewingSegId = null;
+  renderLoops();
+}
+
+function toggleQueueRecord() {
+  _queueRecOn = !_queueRecOn;
+  const btn = document.getElementById('queue-rec-toggle');
+  if (btn) {
+    btn.classList.toggle('active', _queueRecOn);
+    btn.textContent = _queueRecOn ? '⬤ Rec on' : '⬤ Rec off';
+  }
+}
+
+function stepReps(id, delta) {
+  const seg = segments.find(s => s.id === id);
+  if (!seg) return;
+  seg.reps = Math.max(1, Math.min(5, (seg.reps || 1) + delta));
+  saveSession();
+  const el = document.getElementById(`repnum-${id}`);
+  if (el) el.textContent = seg.reps;
+}
+
+function togglePassageQueue_check(id, val) {
+  const seg = segments.find(s => s.id === id);
+  if (!seg) return;
+  seg.queued = val;
+  if (!val) seg.reps = 1; // reset reps when unchecked
+  saveSession();
+  renderLoops(); // re-render to show/hide stepper
+  const anyQueued = segments.some(s => s.queued);
+  const bar = document.getElementById('queue-btn-bar');
+  if (bar) bar.style.display = anyQueued ? 'flex' : 'none';
+}
+
+// ── Session intention ──
+function saveIntention(val) {
+  const key = currentPieceName || '_default';
+  try {
+    const all = JSON.parse(localStorage.getItem(INTENTION_KEY) || '{}');
+    if (val.trim()) all[key] = val.trim();
+    else delete all[key];
+    localStorage.setItem(INTENTION_KEY, JSON.stringify(all));
+  } catch(e) {}
+}
+
+function loadIntention() {
+  const inp = document.getElementById('intention-input');
+  if (!inp) return;
+  try {
+    const key = currentPieceName || '_default';
+    const all = JSON.parse(localStorage.getItem(INTENTION_KEY) || '{}');
+    inp.value = all[key] || '';
+  } catch(e) { inp.value = ''; }
+}
+
 document.addEventListener('keydown', e => {
   const tag = document.activeElement.tagName;
   if (tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT') return;
