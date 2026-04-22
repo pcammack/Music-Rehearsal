@@ -175,6 +175,9 @@ input[type=file]{display:none}
 .rec-warning{font-size:0.42rem;color:var(--text-faint);margin-top:0.35rem;line-height:1.7}
 
 /* ── INLINE RECORD BUTTONS (marker + segment rows) ── */
+.marker-btn.record{color:var(--red);opacity:0;transition:opacity 0.15s,color 0.15s}
+.marker-row:hover .marker-btn.record{opacity:1}
+.marker-btn.record:hover{color:#ff6b5b}
 .loop-btn.record{color:var(--red);opacity:0;transition:opacity 0.15s,color 0.15s}
 .loop-row:hover .loop-btn.record{opacity:1}
 .loop-btn.record:hover{color:#ff6b5b}
@@ -325,7 +328,7 @@ input[type=file]{display:none}
 /* Loop rows: label | span | dur | ▶ | ⟳ | 🎯 | ✕ */
 .loop-col-header,.loop-row{
   display:grid;
-  grid-template-columns:16px 18px 1fr 70px 46px 22px 22px 22px 22px 22px;
+  grid-template-columns:12px 16px 18px 1fr 70px 46px 22px 22px 22px 22px 22px;
   gap:0.3rem;align-items:center}
 .passage-note-input{grid-column:1/-1}
 .loop-col-header{font-size:0.42rem;color:var(--text-faint);letter-spacing:0.1em;
@@ -356,11 +359,15 @@ input[type=file]{display:none}
 .loop-empty{font-size:0.5rem;color:var(--text-faint);padding:0.5rem 0;text-align:center}
 
 
-/* ── LOOP COUNTER ── */
-.loop-counter-bar{display:flex;align-items:center;gap:0.5rem;padding:0.25rem 0.1rem;margin-bottom:0.2rem;font-size:0.44rem;color:var(--text-faint)}
-.loop-counter-num{font-size:0.72rem;font-weight:600;color:var(--accent);min-width:1.6rem;text-align:right;font-family:'JetBrains Mono',monospace}
-.loop-counter-reset{background:none;border:1px solid var(--border);color:var(--text-faint);font-family:'JetBrains Mono',monospace;font-size:0.38rem;padding:0.05rem 0.3rem;cursor:pointer;transition:all 0.15s;letter-spacing:0.05em}
-.loop-counter-reset:hover{border-color:var(--border-l);color:var(--text)}
+/* ── PASSAGE STATUS ── */
+.status-dot{width:10px;height:10px;border-radius:50%;border:1px solid var(--border-l);cursor:pointer;flex-shrink:0;transition:all 0.15s;display:inline-block}
+.status-dot:hover{transform:scale(1.25)}
+.status-dot.learning{background:var(--red);border-color:var(--red)}
+.status-dot.stable{background:var(--accent);border-color:var(--accent)}
+.status-dot.fluent{background:var(--green);border-color:var(--green)}
+.loop-row.status-learning{border-left:2px solid var(--red)!important}
+.loop-row.status-stable{border-left:2px solid var(--accent)!important}
+.loop-row.status-fluent{border-left:2px solid var(--green)!important}
 /* ── PASSAGE QUEUE ── */
 .queue-btn-bar{display:flex;align-items:center;gap:0.5rem;padding:0.25rem 0.1rem;margin-bottom:0.2rem;flex-wrap:wrap}
 .queue-play-btn{background:var(--green);border:1px solid var(--green);color:#fff;font-family:'JetBrains Mono',monospace;font-size:0.42rem;padding:0.1rem 0.5rem;cursor:pointer;letter-spacing:0.05em;transition:all 0.15s}
@@ -387,11 +394,11 @@ input[type=file]{display:none}
 .btn-single:hover{border-color:var(--border-l);color:var(--text)}
 .btn-single.active{background:var(--blue);border-color:var(--blue);color:#fff}
 /* ── INTENTION PROMPT ── */
-.intention-bar{display:flex;align-items:center;gap:0.4rem;padding:0.25rem 0;border-bottom:1px solid var(--border);margin-bottom:0.3rem}
-.intention-input{flex:1;background:none;border:none;border-bottom:1px solid var(--border-l);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:0.44rem;padding:0.05rem 0;outline:none;transition:border-color 0.15s}
+.intention-bar{display:flex;align-items:center;gap:0.4rem;padding:0.3rem 0.5rem;border:1px solid rgba(196,146,42,0.4);background:rgba(196,146,42,0.06);margin-bottom:0.3rem;border-radius:1px}
+.intention-input{flex:1;background:none;border:none;border-bottom:1px solid rgba(196,146,42,0.4);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:0.44rem;padding:0.05rem 0;outline:none;transition:border-color 0.15s}
 .intention-input:focus{border-bottom-color:var(--accent)}
-.intention-input::placeholder{color:var(--text-faint);font-style:italic}
-.intention-label{font-size:0.38rem;color:var(--text-faint);white-space:nowrap;letter-spacing:0.06em;text-transform:uppercase}
+.intention-input::placeholder{color:rgba(196,146,42,0.5);font-style:italic}
+.intention-label{font-size:0.38rem;color:var(--accent);white-space:nowrap;letter-spacing:0.06em;text-transform:uppercase;opacity:0.8}
 /* ── NOTES (right column, fixed+scrollable) ── */
 .notes-panel{background:var(--bg2);border:1px solid var(--border);padding:0.65rem 0.8rem}
 .notes-textarea{width:100%;background:var(--bg3);border:1px solid var(--border);
@@ -532,7 +539,7 @@ input[type=file]{display:none}
 <header>
   <div style="display:flex;align-items:center">
     <span class="app-name">Rehearsal Space</span>
-    <span class="app-ver">v6.7</span>
+    <span class="app-ver">v6.8</span>
   </div>
 </header>
 
@@ -611,11 +618,7 @@ input[type=file]{display:none}
           <select class="seg-select" id="seg-end"><option value="">End…</option></select>
           <button class="btn-sm primary" onclick="addSegment()">+ Add</button>
         </div>
-        <div class="loop-counter-bar" id="loop-counter-bar" style="display:none">
-          <span>Loops:</span>
-          <span class="loop-counter-num" id="loop-counter-num">0</span>
-          <button class="loop-counter-reset" onclick="resetLoopCounter()">reset</button>
-        </div>
+
         <div class="queue-btn-bar" id="queue-btn-bar" style="display:none">
           <button class="queue-play-btn" id="queue-play-btn" onclick="togglePassageQueue()">▶ Play queue</button>
           <button class="queue-rec-toggle" id="queue-rec-toggle" onclick="toggleQueueRecord()" title="Auto-record last rep of each passage">⬤ Rec off</button>
@@ -684,10 +687,10 @@ input[type=file]{display:none}
           <span>Notes</span>
         </div>
         <div class="intention-bar" id="intention-bar">
-          <span class="intention-label">Focus</span>
+          <span class="intention-label">Today's intention</span>
           <input class="intention-input" id="intention-input" type="text"
             placeholder="What are you listening for today?"
-            onchange="saveIntention(this.value)">
+            onblur="appendIntention(this.value)">
         </div>
         <textarea class="scratchpad-textarea" id="piece-notes"
           placeholder="Musical intentions, teacher feedback, phrasing ideas…"
@@ -784,6 +787,7 @@ input[type=file]{display:none}
             <strong>T</strong> open Woodshed ·
             <strong>S</strong> save passage ·
             <strong>R</strong> record ·
+            <strong>F</strong> cycle passage status (Learning/Stable/Fluent) ·
             <strong>K</strong> discard last clip ·
             <strong>[ ]</strong> step tempo ·
             <strong>, .</strong> step lead-in ·
@@ -851,26 +855,15 @@ input[type=file]{display:none}
       <span>Documentation</span><span id="docs-arrow">▸</span>
     </button>
     <div class="collapsible-body" id="docs-body">
-      <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v6.7</span>
+      <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v6.8</span>
 
-      <div class="doc-h">WHAT'S NEW IN v6.7</div>
+      <div class="doc-h">WHAT'S NEW IN v6.8</div>
       <div class="doc-p">
-        · <strong style="color:var(--text)">Rehearsal mark recording removed:</strong> Recording is now passage-scoped or free only. Eliminates premature auto-stop bugs from open-ended mark recordings.<br>
-        · <strong style="color:var(--text)">Frozen playback fixed:</strong> AudioContext is now created once per clip and reused across pause/play cycles. Only destroyed on clip delete. Eliminates the freeze caused by calling createMediaElementSource() on an already-wired element.<br>
-        · <strong style="color:var(--text)">Clip seek / jump-to:</strong> Both rec and ref waveform canvases are now clickable to seek. Seeking one channel seeks both in sync.<br>
-        · <strong style="color:var(--text)">Reference baking fix:</strong> _bakeRefChannel now correctly time-stretches the reference slice. At 70% speed, the reference plays at 70% — not 130%. Pitch is preserved.<br>
-        · <strong style="color:var(--text)">Latency offset direction fixed:</strong> latencyOffset now correctly shifts the reference start position (negative offset = reference starts earlier to compensate for capture delay).<br>
-        · <strong style="color:var(--text)">85% tempo step:</strong> Added to all speed step arrays (STOPS and TT_STOPS).
-      </div>
-      <div class="doc-p">
-        · <strong style="color:var(--text)">Passage queue:</strong> Checkbox on each passage to build a play queue. ▶ Play queue button runs through checked passages in chronological order, one pass each.<br>
-        · <strong style="color:var(--text)">Loop counter:</strong> Visible count of consecutive loop plays with a reset button. Appears when a loop is active.<br>
-        · <strong style="color:var(--text)">Input level monitor:</strong> Mic level bar appears when recording starts — confirms signal before committing to a take.<br>
-        · <strong style="color:var(--text)">Single-pass recording:</strong> ⊳ Single button next to Record — plays through once without looping.<br>
-        · <strong style="color:var(--text)">Clip speed badge:</strong> Recording tempo shown on each take in the Takes panel.<br>
-        · <strong style="color:var(--text)">Session focus prompt:</strong> "What are you listening for today?" field at the top of Notes, stored per piece.<br>
-        · <strong style="color:var(--text)">seekClip fix:</strong> Clip mini-player now correctly resumes at the recorded speed after seeking.<br>
-        · <strong style="color:var(--text)">Blend system removed:</strong> Live playback blend and its UI fully cleaned out. WAV download unchanged.
+        · <strong style="color:var(--text)">Passage fluency status:</strong> Color-coded dot on each passage row — click to cycle through Learning (red), Stable (amber), Fluent (green), or unscored. Press <strong>F</strong> to cycle the active passage from the keyboard. Status is persistent per passage across sessions. Independent passages sharing overlapping markers carry independent status values.<br>
+        · <strong style="color:var(--text)">Passage naming:</strong> Span reference (e.g. 85→90) always shown first as the structural anchor. An optional descriptive name field below ("scalar run in D") gives a quick prose label. Both are always visible.<br>
+        · <strong style="color:var(--text)">Today's intention:</strong> Amber-highlighted field above Notes. Enter a focus for the session; on blur it appends a dated entry to the Notes field and clears itself. Builds an oral history of practice intentions over time.<br>
+        · <strong style="color:var(--text)">Loop counter removed:</strong> Cleaned out fully — counter, reset button, and all related state.<br>
+        · <strong style="color:var(--text)">Recorder hardening:</strong> MediaRecorder errors now caught and handled gracefully. Stop call guarded against inactive-state crash. Stream tracks stopped defensively on all exit paths.
       </div>
       · <strong style="color:var(--text)">Performance marks never autonumber:</strong> Adding a performance mark no longer triggers renumbering of structural marks. Autonumbering and cascade are now scoped exclusively to structural marks (type R).<br>
       · <strong style="color:var(--text)">Recordings stay in sync at non-100% speed:</strong> Clips now store the playback rate at which they were recorded. The mini-player, mixer, and blend reference all match that speed, so a take recorded at 75% reviews correctly at 75%.<br>
@@ -1475,8 +1468,6 @@ function _onTimeUpdate() {
         return;
       }
       audioEl.currentTime = loopStart;
-      loopCounter++;
-      _updateLoopCounter();
       // Trigger armed recording on loop restart
       if (recArmed && !isRecording) {
         recArmed = false;
@@ -1576,7 +1567,7 @@ function playToNextMarker() {
 
 function onSpeedChange(v) {
   currentSpeed = parseFloat(v);
-  const STOPS = [0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 1.0, 1.05, 1.1, 1.2];
+  const STOPS = [0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1.0, 1.05, 1.1, 1.2];
   const snapped = STOPS.reduce((a,b) => Math.abs(b-currentSpeed)<Math.abs(a-currentSpeed)?b:a);
   currentSpeed = snapped;
   document.getElementById('speed-slider').value = currentSpeed;
@@ -1585,7 +1576,7 @@ function onSpeedChange(v) {
 }
 
 function stepTempo(dir) {
-  const STOPS = [0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 1.0, 1.05, 1.1, 1.2];
+  const STOPS = [0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1.0, 1.05, 1.1, 1.2];
   const idx = STOPS.indexOf(currentSpeed);
   const cur = idx !== -1 ? idx : STOPS.findIndex(s => s >= currentSpeed);
   const newIdx = Math.max(0, Math.min(STOPS.length-1, (idx !== -1 ? idx : cur) + dir));
@@ -1918,6 +1909,7 @@ function renderMarkers() {
       <button class="marker-btn${isQLS?' quick-loop-start':''}" onclick="markerLoopToNext(${m.id})" title="Loop to next ${isStructuralMark?'structural ':''}mark">⟳</button>
       <button class="marker-btn" onclick="openTempoTrainingFromMarker(${m.id})" title="Open Woodshed" ${isGhost?'disabled':''}>T</button>
       <button class="marker-btn" onclick="toggleMarkerType(${m.id})" title="${isStructuralMark?'Structural — click to make Performance':'Performance — click to make Structural'}" style="color:${isStructuralMark?'var(--accent)':'var(--blue)'}" ${isGhost?'disabled':''}>${isStructuralMark?'S':'P'}</button>
+      <button class="marker-btn record" onclick="recordFromMarker(${m.id})" title="Record from here" ${isGhost?'disabled':''}>●</button>
       <button class="marker-btn delete"
         onclick="removeMarker(${m.id})" title="Remove" ${isGhost?'disabled':''}>✕</button>
       ${isGhost ? '' : annotationRow}
@@ -2080,8 +2072,17 @@ function addSegment() {
   // Don't duplicate
   if (segments.some(s=>s.startId===startId&&s.endId===endId)) return;
   pushUndo();
-  segments.push({ id: segmentIdCounter++, startId, endId, include: true });
+  segments.push({ id: segmentIdCounter++, startId, endId, include: true, status: null });
   renderLoops(); saveSession();
+}
+
+function cyclePassageStatus(id) {
+  const seg = segments.find(s=>s.id===id);
+  if (!seg) return;
+  const cycle = { null: 'learning', learning: 'stable', stable: 'fluent', fluent: null };
+  seg.status = cycle[seg.status] !== undefined ? cycle[seg.status] : 'learning';
+  saveSession();
+  renderLoops();
 }
 
 function removeSegment(id) {
@@ -2144,21 +2145,27 @@ function renderLoops() {
     const dur = Math.max(0, em.time - sm.time);
     const isActive = seg.id === activeLoopId;
     const isStarred = !!seg.starred;
-    const defaultName = `${sm.label} → ${em.label}`;
-    const displayName = seg.name || defaultName;
+    const spanRef = `${sm.label}→${em.label}`;
     const hasNote = seg.note && seg.note.trim();
     const isQueued = !!seg.queued;
-    return `<div class="loop-row${isActive?' active-loop':''}${isStarred?' starred-loop':''}" id="seg-row-${seg.id}">
+    const status = seg.status || null;
+    const statusClass = status ? ` status-${status}` : '';
+    const statusTitle = status ? `Status: ${status} — click to change (or press F)` : 'No status — click to set (or press F)';
+    return `<div class="loop-row${isActive?' active-loop':''}${isStarred?' starred-loop':''}${statusClass}" id="seg-row-${seg.id}">
+      <span class="status-dot${status?' '+status:''}" onclick="cyclePassageStatus(${seg.id})" title="${statusTitle}"></span>
       <span style="display:inline-flex;align-items:center">
         <input type="checkbox" class="queue-check" id="qchk-${seg.id}" ${isQueued?'checked':''} onchange="togglePassageQueue_check(${seg.id},this.checked)" title="Add to play queue">
         ${isQueued ? `<span class="rep-stepper"><button class="rep-btn" onclick="stepReps(${seg.id},-1)">−</button><span class="rep-num" id="repnum-${seg.id}">${seg.reps||1}</span><button class="rep-btn" onclick="stepReps(${seg.id},1)">+</button></span>` : ''}
       </span>
       <button class="loop-btn star-btn${isStarred?' starred':''}" onclick="togglePassageStar(${seg.id})" title="${isStarred?'Remove star':'Star this passage'}">★</button>
-      <input class="loop-label-input" value="${escHtml(displayName)}"
-        placeholder="${escHtml(defaultName)}"
-        onchange="updateLoopName(${seg.id},this.value)"
-        title="Click to rename passage">
-      <span class="loop-span">${sm.label}→${em.label}</span>
+      <div style="display:flex;flex-direction:column;min-width:0;gap:0.05rem">
+        <span style="font-size:0.46rem;color:var(--text-mid);font-family:'JetBrains Mono',monospace">${spanRef}</span>
+        <input class="loop-label-input" value="${escHtml(seg.name||'')}"
+          placeholder="add description…"
+          onchange="updateLoopName(${seg.id},this.value)"
+          title="Descriptive name for this passage"
+          style="font-size:0.44rem;color:var(--text-faint)">
+      </div>
       <span class="loop-dur">${fmtTime(dur)}</span>
       <button class="loop-btn" onclick="previewSegment(${seg.id})" title="Preview">▶</button>
       <button class="loop-btn${isActive?' loop-active':''}" onclick="toggleLoop(${seg.id})" title="Loop passage">⟳</button>
@@ -2203,8 +2210,6 @@ function toggleLoop(id) {
   if (activeLoopId === id) {
     activeLoopId = null;
     previewingSegId = null;
-    loopCounter = 0;
-    _updateLoopCounter();
     if (isPlaying) _pause();
   } else {
     activeLoopId = id;
@@ -2228,8 +2233,6 @@ function toggleLoop(id) {
 
 function _startLooping(startTime, endTime) {
   if (!audioEl || !audioBuffer) return;
-  loopCounter = 0;
-  _updateLoopCounter();
   cancelAnimationFrame(animFrame);
   playGen++;
   // Store loop boundary in file time (for _onTimeUpdate seamless repeat)
@@ -2808,7 +2811,7 @@ function manualLoadPieceTxt(file) {
 // ══════════════════════════════════════════════
 // TEMPO TRAINING
 // ══════════════════════════════════════════════
-const TT_STOPS = [0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 1.0, 1.05, 1.1, 1.2];
+const TT_STOPS = [0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1.0, 1.05, 1.1, 1.2];
 let ttConfig    = TT_STOPS.map(s => ({ pct: s, enabled: s >= 0.8 && s <= 1.0, reps: 2 }));
 let ttState     = null; // null = idle, else { stepIdx, repsDone, paused }
 let ttLoopId    = null;
@@ -2995,7 +2998,6 @@ let latencyOffset    = 0;
 
 // Take counters per passage label
 let takeCounts = {};
-let loopCounter = 0;        // visible loop count for current active loop
 let singlePassMode = false;   // when true, next loop boundary stops instead of repeating
 let _queueActive   = false;  // passage queue running
 let _queueList     = [];     // sorted queued segments for current run
@@ -3051,6 +3053,7 @@ async function _startRecordingPass(startTime, endTime, passLabel, withRef) {
     const duration = endTime - startTime;
     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recChunks.push(e.data); };
     mediaRecorder.onstop = () => _onRecordingStop(passLabel, withRef, duration);
+    mediaRecorder.onerror = (e) => { console.warn('MediaRecorder error:', e); _stopRecording(); };
     mediaRecorder.start(100);
     isRecording = true;
     recStartTime = Date.now();
@@ -3114,6 +3117,7 @@ async function _startFreeRecording() {
     recChunks = [];
     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recChunks.push(e.data); };
     mediaRecorder.onstop = () => _onRecordingStop('free', false, null);
+    mediaRecorder.onerror = (e) => { console.warn('MediaRecorder error:', e); _stopRecording(); };
     mediaRecorder.start(100);
     isRecording = true;
     recStartTime = Date.now();
@@ -3136,8 +3140,10 @@ async function _startFreeRecording() {
 function _stopRecording() {
   if (!mediaRecorder || !isRecording) return;
   _stopLevelMonitor();
-  mediaRecorder.stop();
-  mediaRecorder.stream.getTracks().forEach(t => t.stop());
+  try {
+    if (mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+    if (mediaRecorder.stream) mediaRecorder.stream.getTracks().forEach(t => t.stop());
+  } catch(e) { console.warn('_stopRecording cleanup error:', e); }
   isRecording = false;
   clearInterval(recTimerInterval);
   // Restore audio volume and pause
@@ -3179,9 +3185,23 @@ async function toggleRecording() {
     const seg = segments.find(s => s.id === activeLoopId);
     if (seg) { await recordSegment(seg.id); return; }
   }
+  if (activeMarkerIdx >= 0 && activeMarkerIdx < markers.length - 1) {
+    await recordFromMarker(markers[activeMarkerIdx].id); return;
+  }
   await _startFreeRecording();
 }
 
+// ── Record from a marker row ● button ──
+async function recordFromMarker(markerId) {
+  const idx = markers.findIndex(m => m.id === markerId);
+  if (idx < 0 || idx >= markers.length - 1) { await _startFreeRecording(); return; }
+  const sm = markers[idx];
+  const em = markers[idx + 1];
+  const passLabel = sm.label + '→' + em.label;
+  // withRef = true whenever reference audio is loaded — reference plays audibly
+  // through headphones, microphone captures instrument only
+  await _startRecordingPass(sm.time, em.time, passLabel, !!audioBuffer);
+}
 
 // ── Record from a segment ● button ──
 async function recordSegment(segId) {
@@ -3258,43 +3278,33 @@ async function _onRecordingStop(passLabel, withRef, nominalDuration) {
 
 async function _bakeRefChannel(clip) {
   try {
-    const speed    = clip.recordingSpeed || 1.0;
-    const sr       = audioBuffer.sampleRate;
-    const numCh    = audioBuffer.numberOfChannels;
+    const speed = clip.recordingSpeed || 1.0;
+    const startSec = (clip.startOffset || 0) + (latencyOffset / 1000);
+    const sr = audioBuffer.sampleRate;
+    const numCh = audioBuffer.numberOfChannels;
 
-    // latencyOffset shifts where in the reference we start reading.
-    // Positive offset = reference started later → read earlier in the buffer.
-    const startSec    = Math.max(0, (clip.startOffset || 0) - (latencyOffset / 1000));
-    const startSample = Math.floor(startSec * sr);
+    // Duration of the clip in source (pre-speed) seconds
+    const srcDur = clip.duration * speed;
+    const startSample = Math.max(0, Math.floor(startSec * sr));
+    const frameCount  = Math.min(
+      Math.ceil(clip.duration * sr),   // frames at output rate
+      Math.ceil(srcDur * sr)
+    );
 
-    // How many source samples correspond to the recording duration at recorded speed?
-    // At speed=0.7: the reference played at 0.7×, so clip.duration wall-clock seconds
-    // = clip.duration * 0.7 seconds of source material.
-    const srcFrames = Math.round(clip.duration * speed * sr);
-    const endSample = Math.min(audioBuffer.length, startSample + srcFrames);
-    const actualSrcFrames = endSample - startSample;
-
-    // Output buffer: clip.duration seconds at native sample rate.
-    // We copy actualSrcFrames of source into a buffer of clipFrames — the
-    // OfflineAudioContext resamples implicitly when rendered length differs.
-    const clipFrames = Math.round(clip.duration * sr);
-    const offCtx = new OfflineAudioContext(numCh, clipFrames, sr);
-
-    // Fill a source buffer with the raw (un-speed-adjusted) reference slice
-    const srcBuf = offCtx.createBuffer(numCh, actualSrcFrames, sr);
+    // Build an OfflineAudioContext at the target duration (clip.duration seconds)
+    const offCtx = new OfflineAudioContext(numCh, Math.ceil(clip.duration * sr), sr);
+    const refBuf = offCtx.createBuffer(numCh, Math.ceil(srcDur * sr), sr);
     for (let c = 0; c < numCh; c++) {
-      const srcData = audioBuffer.getChannelData(Math.min(c, numCh - 1));
-      srcBuf.getChannelData(c).set(srcData.subarray(startSample, endSample));
+      const src = audioBuffer.getChannelData(Math.min(c, audioBuffer.numberOfChannels - 1));
+      const dst = refBuf.getChannelData(c);
+      const endSample = Math.min(src.length, startSample + Math.ceil(srcDur * sr));
+      dst.set(src.subarray(startSample, endSample));
     }
-
-    // Play the source buffer at playbackRate = speed so it time-stretches
-    // to fill exactly clipFrames — no pitch manipulation, just rate change
-    // which the OfflineAudioContext handles in the time domain.
-    const srcNode = offCtx.createBufferSource();
-    srcNode.buffer = srcBuf;
-    srcNode.playbackRate.value = speed; // play at recorded speed → fills clip duration
-    srcNode.connect(offCtx.destination);
-    srcNode.start(0);
+    const src = offCtx.createBufferSource();
+    src.buffer = refBuf;
+    src.playbackRate.value = 1 / speed; // time-stretch to match clip duration
+    src.connect(offCtx.destination);
+    src.start(0);
     const rendered = await offCtx.startRendering();
     clip.refBlob = _audioBufferToWavBlob(rendered);
 
@@ -3371,8 +3381,7 @@ function renderRecClips() {
       <canvas class="clip-waveform-canvas" id="clip-wave-${clip.id}"
         onclick="seekClip(${clip.id},event)" title="Click to seek"></canvas>
       ${hasRef ? `<canvas class="clip-waveform-canvas" id="clip-ref-wave-${clip.id}"
-        style="margin-top:1px;opacity:0.7" title="Reference — click to seek"
-        onclick="seekClip(${clip.id},event)"></canvas>` : ''}
+        style="margin-top:1px;opacity:0.7" title="Reference (baked at ${Math.round((clip.recordingSpeed||1)*100)}%)"></canvas>` : ''}
       <div class="clip-transport">
         <button class="clip-play-btn" id="clip-btn-${clip.id}"
           onclick="toggleClipPlay(${clip.id})">▶</button>
@@ -3567,12 +3576,9 @@ function clipToggleMute(clipId, ch) {
   }
 }
 
-// Full teardown — called on delete or session clear
 function _stopClipPlayback(clipId) {
   const g = clipGainNodes[clipId];
   if (g) {
-    if (g.recAudio) g.recAudio.pause();
-    if (g.refAudio) { g.refAudio.pause(); URL.revokeObjectURL(g.refAudio.src); }
     try { g.ctx.close(); } catch(e) {}
     delete clipGainNodes[clipId];
   }
@@ -3584,43 +3590,6 @@ function _stopClipPlayback(clipId) {
   if (btn) { btn.textContent = '▶'; btn.classList.remove('playing'); }
 }
 
-// Build (or resume) the AudioContext graph for a clip.
-// The context is created once and reused — never re-created on pause/play.
-// Destroyed only on _stopClipPlayback (delete or new recording session).
-function _ensureClipContext(clip) {
-  const id = clip.id;
-  if (clipGainNodes[id] && clipGainNodes[id].ctx.state !== 'closed') {
-    return clipGainNodes[id]; // reuse existing graph
-  }
-  const recAudio = clipAudioEls[id];
-  if (!recAudio) return null;
-
-  const ctx = new (window.AudioContext || window.webkitAudioContext)();
-  const recGain = ctx.createGain();
-  recGain.gain.value = clip.recMuted ? 0 : (clip.recVol ?? 1.0);
-  recGain.connect(ctx.destination);
-
-  // rec channel — createMediaElementSource only called once per element
-  const recSrc = ctx.createMediaElementSource(recAudio);
-  recSrc.connect(recGain);
-
-  let refAudio = null;
-  let refGain = null;
-  if (clip.refBlob) {
-    refAudio = new Audio();
-    refAudio.src = URL.createObjectURL(clip.refBlob);
-    refGain = ctx.createGain();
-    refGain.gain.value = clip.refMuted ? 0 : (clip.refVol ?? 0.8);
-    const refSrc = ctx.createMediaElementSource(refAudio);
-    refSrc.connect(refGain);
-    refGain.connect(ctx.destination);
-  }
-
-  const g = { ctx, recGain, refGain, recAudio, refAudio };
-  clipGainNodes[id] = g;
-  return g;
-}
-
 function toggleClipPlay(clipId) {
   const clip = recClips.find(c => c.id === clipId);
   const btn  = document.getElementById(`clip-btn-${clipId}`);
@@ -3629,14 +3598,13 @@ function toggleClipPlay(clipId) {
   // Stop all other clips
   recClips.forEach(c => { if (c.id !== clipId) _stopClipPlayback(c.id); });
 
+  const existing = clipGainNodes[clipId];
   const recAudio = clipAudioEls[clipId];
-  if (!recAudio) return;
 
-  // If playing → pause
-  if (!recAudio.paused) {
+  if (existing && recAudio && !recAudio.paused) {
+    // Pause
     recAudio.pause();
-    const g = clipGainNodes[clipId];
-    if (g && g.refAudio) g.refAudio.pause();
+    if (existing.refAudio) existing.refAudio.pause();
     btn.textContent = '▶'; btn.classList.remove('playing');
     return;
   }
@@ -3644,51 +3612,64 @@ function toggleClipPlay(clipId) {
   // Stop main player
   if (isPlaying) _pause();
 
-  // Build or reuse context (this is safe to call repeatedly)
-  const g = _ensureClipContext(clip);
-  if (!g) return;
+  // Build AudioContext with GainNodes for live mix
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const recGain = ctx.createGain();
+  const refGain = ctx.createGain();
+  recGain.gain.value = clip.recMuted ? 0 : (clip.recVol ?? 1.0);
+  refGain.gain.value = clip.refMuted ? 0 : (clip.refVol ?? 0.8);
+  recGain.connect(ctx.destination);
 
-  // Resume suspended context (Chrome autoplay policy)
-  if (g.ctx.state === 'suspended') g.ctx.resume();
+  let refAudio = null;
 
-  // Seek both to current rec position
-  const t = recAudio.currentTime;
-  if (g.refAudio) {
-    g.refAudio.currentTime = t; // ref baked to same duration, seek to same position
+  // Wire rec channel
+  if (!recAudio) { btn.textContent = '▶'; return; }
+  recAudio.currentTime = 0;
+  const recSrc = ctx.createMediaElementSource(recAudio);
+  recSrc.connect(recGain);
+
+  // Wire ref channel if baked blob available
+  if (clip.refBlob) {
+    refAudio = new Audio();
+    refAudio.src = URL.createObjectURL(clip.refBlob);
+    refAudio.currentTime = 0;
+    refGain.connect(ctx.destination);
+    const refSrc = ctx.createMediaElementSource(refAudio);
+    refSrc.connect(refGain);
   }
 
-  const plays = [recAudio.play()];
-  if (g.refAudio) plays.push(g.refAudio.play().catch(() => {}));
-  Promise.all(plays).then(() => {
+  clipGainNodes[clipId] = { ctx, recGain, refGain, refAudio };
+
+  // Play both
+  const playPromises = [recAudio.play()];
+  if (refAudio) playPromises.push(refAudio.play().catch(() => {}));
+  Promise.all(playPromises).then(() => {
     btn.textContent = '⏸'; btn.classList.add('playing');
   }).catch(() => {});
 
+  // Stop ref when rec ends
   recAudio.onended = () => {
-    if (g.refAudio) g.refAudio.pause();
+    if (refAudio) refAudio.pause();
     btn.textContent = '▶'; btn.classList.remove('playing');
     _drawClipWaveform(clipId, 0);
-    _drawClipRefWaveform(clipId, 0);
   };
 }
 
-function seekClip(clipId, progress) {
-  // progress: 0–1, or call as seekClip(id, event) from onclick
-  if (progress && typeof progress === 'object') {
-    const canvas = document.getElementById(`clip-wave-${clipId}`) ||
-                   document.getElementById(`clip-ref-wave-${clipId}`);
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    progress = Math.max(0, Math.min(1, (progress.clientX - rect.left) / rect.width));
-  }
-  const clip = recClips.find(c => c.id === clipId);
+function seekClip(clipId, event) {
   const a = clipAudioEls[clipId];
-  if (!clip || !a) return;
-  const t = progress * clip.duration;
-  a.currentTime = t;
-  const g = clipGainNodes[clipId];
-  if (g && g.refAudio) g.refAudio.currentTime = t;
+  const clip = recClips.find(c => c.id === clipId);
+  const canvas = document.getElementById(`clip-wave-${clipId}`);
+  if (!a || !clip || !canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  const progress = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+  a.currentTime = progress * clip.duration;
+  a.playbackRate = clip.recordingSpeed || 1.0;
   _drawClipWaveform(clipId, progress);
-  _drawClipRefWaveform(clipId, progress);
+  // Reposition reference to match new clip position
+  if (audioBuffer && audioEl && !a.paused) {
+    const refPos = (clip.startOffset || 0) + a.currentTime + (latencyOffset / 1000);
+    audioEl.currentTime = trimOffset + Math.max(0, Math.min(audioDuration, refPos));
+  }
 }
 
 
@@ -4481,19 +4462,6 @@ function _hitTestMarker(mouseX, canvasWidth, mouseY, canvasHeight) {
 // KEYBOARD
 // ══════════════════════════════════════════════
 
-// ── Loop counter ──
-function _updateLoopCounter() {
-  const bar = document.getElementById('loop-counter-bar');
-  const num = document.getElementById('loop-counter-num');
-  if (bar) bar.style.display = (activeLoopId !== null) ? 'flex' : 'none';
-  if (num) num.textContent = loopCounter;
-}
-
-function resetLoopCounter() {
-  loopCounter = 0;
-  _updateLoopCounter();
-}
-
 // ── Input level monitor ──
 let _levelAnimId = null;
 let _levelAnalyser = null;
@@ -4658,24 +4626,33 @@ function togglePassageQueue_check(id, val) {
 }
 
 // ── Session intention ──
-function saveIntention(val) {
-  const key = currentPieceName || '_default';
-  try {
-    const all = JSON.parse(localStorage.getItem(INTENTION_KEY) || '{}');
-    if (val.trim()) all[key] = val.trim();
-    else delete all[key];
-    localStorage.setItem(INTENTION_KEY, JSON.stringify(all));
-  } catch(e) {}
+function appendIntention(val) {
+  if (!val || !val.trim()) return;
+  const trimmed = val.trim();
+  const notesEl = document.getElementById('piece-notes');
+  if (!notesEl) return;
+  const date = new Date().toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'});
+  const entry = `— ${date}: ${trimmed}`;
+  const current = notesEl.value;
+  // Append: blank line separator only if there is existing raw notes content
+  if (current.trim()) {
+    notesEl.value = current + '\n' + entry;
+  } else {
+    notesEl.value = entry;
+  }
+  // Clear the intention field
+  const inp = document.getElementById('intention-input');
+  if (inp) inp.value = '';
+  // Resize notes textarea and save
+  notesEl.style.height = 'auto';
+  notesEl.style.height = Math.min(320, notesEl.scrollHeight) + 'px';
+  saveSession();
 }
 
 function loadIntention() {
+  // Always clear the intention field on piece load — it is session-only
   const inp = document.getElementById('intention-input');
-  if (!inp) return;
-  try {
-    const key = currentPieceName || '_default';
-    const all = JSON.parse(localStorage.getItem(INTENTION_KEY) || '{}');
-    inp.value = all[key] || '';
-  } catch(e) { inp.value = ''; }
+  if (inp) inp.value = '';
 }
 
 // ── Single-pass recording ──
@@ -4718,6 +4695,7 @@ document.addEventListener('keydown', e => {
   }
   if (e.code==='KeyS' && audioBuffer) { e.preventDefault(); saveQuickLoop(); }
   if (e.code==='KeyR' && audioBuffer) { e.preventDefault(); toggleRecording(); }
+  if (e.code==='KeyF' && audioBuffer) { e.preventDefault(); if (activeLoopId !== null) cyclePassageStatus(activeLoopId); }
   if (e.code==='KeyK') { e.preventDefault(); killLastClip(); }
   if (e.code==='BracketLeft')  { e.preventDefault(); stepTempo(-1); }
   if (e.code==='BracketRight') { e.preventDefault(); stepTempo(1); }
