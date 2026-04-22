@@ -184,7 +184,6 @@ input[type=file]{display:none}
 
 
 /* ── TAKE BADGE ── */
-.take-badge{font-size:0.38rem;color:var(--text-faint);white-space:nowrap}
 .folder-banner{background:var(--bg2);border:1px solid var(--border);
   padding:0.5rem 0.8rem;margin-bottom:0.5rem;
   display:flex;align-items:center;justify-content:space-between;gap:0.5rem}
@@ -1478,15 +1477,15 @@ function _onTimeUpdate() {
         document.getElementById('btn-rec').textContent = '● Record';
         document.getElementById('btn-rec').classList.remove('recording');
         document.getElementById('rec-scope').textContent = '';
-        // Capture speed and boundaries NOW before any async work
+        // Capture boundaries and speed synchronously — no async gap
         const armedSpeed = currentSpeed;
         const startTime = loopStart - trimOffset;
         const endTime   = loopEnd   - trimOffset;
         const passLabel = _recScopeLabel();
-        // armedMode=true: keeps loop playing, auto-stop handles end of this pass
-        _startRecordingPass(startTime, endTime, passLabel, !!audioBuffer, armedSpeed, true).catch(() => {});
+        // _startArmedRecording is synchronous — uses pre-acquired stream, starts immediately
+        _startArmedRecording(startTime, endTime, passLabel, !!audioBuffer, armedSpeed);
       } else if (isRecording) {
-        // Recording was running through a loop pass — stop it now at the boundary
+        // Recording pass complete — stop at this loop boundary
         _stopRecording();
       }
     }
@@ -3049,6 +3048,55 @@ function stepLatency(delta) {
   _updateLatencyDisplay();
 }
 
+// ── Armed recording: synchronous start using pre-acquired stream ──
+// Called directly from _onTimeUpdate at loop boundary — no async gap
+function _startArmedRecording(startTime, endTime, passLabel, withRef, capturedSpeed) {
+  if (!_armedStream) return;
+  if (isRecording) _stopRecording();
+  const stream = _armedStream;
+  _armedStream = null; // consumed
+
+  const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+    ? 'audio/webm;codecs=opus'
+    : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+  mediaRecorder = mimeType
+    ? new MediaRecorder(stream, { mimeType })
+    : new MediaRecorder(stream);
+
+  recChunks = [];
+  const duration = endTime - startTime;
+  const speedAtRecord = capturedSpeed || currentSpeed;
+  mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recChunks.push(e.data); };
+  mediaRecorder.onstop = () => {
+    // Stop tracks after onstop fires — stopping before can prevent onstop in some browsers
+    try { stream.getTracks().forEach(t => t.stop()); } catch(e) {}
+    _onRecordingStop(passLabel, withRef, duration, speedAtRecord);
+  };
+  mediaRecorder.onerror = (e) => { console.warn('MediaRecorder error:', e); _stopRecording(); };
+  mediaRecorder.start(100);
+  _startLevelMonitor(stream);
+  isRecording = true;
+  recStartTime = Date.now();
+  recStartOffset = startTime;
+
+  // UI
+  document.getElementById('rec-indicator').classList.add('visible');
+  document.getElementById('btn-rec').textContent = '⏹ Stop';
+  document.getElementById('btn-rec').classList.add('recording');
+  document.getElementById('rec-scope').textContent = passLabel;
+  recTimerInterval = setInterval(() => {
+    const elapsed = (Date.now() - recStartTime) / 1000;
+    const m = Math.floor(elapsed / 60);
+    const s = Math.floor(elapsed % 60);
+    document.getElementById('rec-timer').textContent = `${m}:${s.toString().padStart(2,'0')}`;
+  }, 500);
+
+  // Auto-stop: loop boundary handler (_onTimeUpdate) will also stop on next boundary
+  // as a primary mechanism; setTimeout is a safety net
+  const stopDelay = ((duration + leadIn) / speedAtRecord) * 1000 + 400;
+  setTimeout(() => { if (isRecording) _stopRecording(); }, stopDelay);
+}
+
 // ── Core: start a timed recording pass ──
 // startTime, endTime in display seconds (trimOffset already handled)
 // passLabel: human name for the passage e.g. "A→B" or "bar 23→bar 31"
@@ -3172,30 +3220,53 @@ async function _startFreeRecording() {
 function _stopRecording() {
   if (!mediaRecorder || !isRecording) return;
   _stopLevelMonitor();
-  try {
-    if (mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-    if (mediaRecorder.stream) mediaRecorder.stream.getTracks().forEach(t => t.stop());
-  } catch(e) { console.warn('_stopRecording cleanup error:', e); }
   isRecording = false;
   clearInterval(recTimerInterval);
-  // Restore audio volume and pause
-  if (audioEl) { audioEl.volume = 1; }
-  if (isPlaying) _pause();
+  // Hard-reset UI immediately so user isn't left in frozen state
   document.getElementById('rec-indicator').classList.remove('visible');
   document.getElementById('btn-rec').textContent = '● Record';
   document.getElementById('btn-rec').classList.remove('recording');
   document.getElementById('rec-scope').textContent = '';
   document.getElementById('rec-timer').textContent = '0:00';
+  if (audioEl) { audioEl.volume = 1; }
+  if (isPlaying) _pause();
+  try {
+    if (mediaRecorder.state !== 'inactive') {
+      // Stop tracks AFTER onstop fires — stopping before can prevent onstop in Chrome
+      const mr = mediaRecorder;
+      const onStopFired = { done: false };
+      const hardReset = setTimeout(() => {
+        if (!onStopFired.done) {
+          // onstop never fired — force stop tracks and bail
+          try { mr.stream && mr.stream.getTracks().forEach(t => t.stop()); } catch(e) {}
+          console.warn('MediaRecorder onstop timeout — force-reset');
+        }
+      }, 2000);
+      const origOnStop = mr.onstop;
+      mr.onstop = (...args) => {
+        onStopFired.done = true;
+        clearTimeout(hardReset);
+        try { mr.stream && mr.stream.getTracks().forEach(t => t.stop()); } catch(e) {}
+        if (origOnStop) origOnStop(...args);
+      };
+      mr.stop();
+    } else {
+      // Already inactive — just stop tracks
+      if (mediaRecorder.stream) mediaRecorder.stream.getTracks().forEach(t => t.stop());
+    }
+  } catch(e) { console.warn('_stopRecording error:', e); }
 }
 
 // ── R key / panel button: context-aware dispatch ──
 let recArmed = false; // true when waiting for next loop boundary to start recording
+let _armedStream = null; // pre-acquired mic stream for armed recording
 
 async function toggleRecording() {
   if (isRecording) { _stopRecording(); return; }
   if (recArmed) {
-    // Cancel arm
+    // Cancel arm — release pre-acquired stream
     recArmed = false;
+    if (_armedStream) { _armedStream.getTracks().forEach(t => t.stop()); _armedStream = null; }
     document.getElementById('rec-scope').textContent = '';
     document.getElementById('btn-rec').textContent = '● Record';
     document.getElementById('btn-rec').classList.remove('recording');
@@ -3204,6 +3275,15 @@ async function toggleRecording() {
 
   // If looping is active — arm for next loop pass (don't interrupt current pass)
   if (isPlaying && loopStart !== null && loopEnd !== null) {
+    // Pre-acquire mic stream NOW (sync UI, async stream) so boundary trigger has no async gap
+    try {
+      _armedStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, sampleRate: 44100 }
+      });
+    } catch(err) {
+      alert('Microphone access denied or unavailable.\n\n' + err.message);
+      return;
+    }
     recArmed = true;
     document.getElementById('btn-rec').textContent = '◉ Armed';
     document.getElementById('btn-rec').classList.add('recording');
@@ -3315,28 +3395,27 @@ async function _bakeRefChannel(clip) {
     const sr = audioBuffer.sampleRate;
     const numCh = audioBuffer.numberOfChannels;
 
-    // Duration of the clip in source (pre-speed) seconds
+    // Slice exactly clip.duration * speed seconds of source (the passage at original tempo)
+    // Do NOT apply playbackRate — pitch correction happens live via HTMLAudioElement.preservesPitch
     const srcDur = clip.duration * speed;
     const startSample = Math.max(0, Math.floor(startSec * sr));
-    const frameCount  = Math.min(
-      Math.ceil(clip.duration * sr),   // frames at output rate
-      Math.ceil(srcDur * sr)
-    );
+    const srcFrames   = Math.ceil(srcDur * sr);
 
-    // Build an OfflineAudioContext at the target duration (clip.duration seconds)
-    const offCtx = new OfflineAudioContext(numCh, Math.ceil(clip.duration * sr), sr);
-    const refBuf = offCtx.createBuffer(numCh, Math.ceil(srcDur * sr), sr);
+    // Render the raw source slice into a WAV at native speed/pitch
+    const offCtx = new OfflineAudioContext(numCh, srcFrames, sr);
+    const refBuf = offCtx.createBuffer(numCh, srcFrames, sr);
     for (let c = 0; c < numCh; c++) {
       const src = audioBuffer.getChannelData(Math.min(c, audioBuffer.numberOfChannels - 1));
       const dst = refBuf.getChannelData(c);
-      const endSample = Math.min(src.length, startSample + Math.ceil(srcDur * sr));
+      const endSample = Math.min(src.length, startSample + srcFrames);
       dst.set(src.subarray(startSample, endSample));
     }
-    const src = offCtx.createBufferSource();
-    src.buffer = refBuf;
-    src.playbackRate.value = speed; // time-stretch: slow source to fill clip duration
-    src.connect(offCtx.destination);
-    src.start(0);
+    const srcNode = offCtx.createBufferSource();
+    srcNode.buffer = refBuf;
+    // playbackRate = 1.0 — no stretching, no pitch shift
+    // During playback, HTMLAudioElement will handle speed + preservesPitch
+    srcNode.connect(offCtx.destination);
+    srcNode.start(0);
     const rendered = await offCtx.startRendering();
     clip.refBlob = _audioBufferToWavBlob(rendered);
 
@@ -3413,12 +3492,11 @@ function renderRecClips() {
       <canvas class="clip-waveform-canvas" id="clip-wave-${clip.id}"
         onclick="seekClip(${clip.id},event)" title="Click to seek"></canvas>
       ${hasRef ? `<canvas class="clip-waveform-canvas" id="clip-ref-wave-${clip.id}"
-        style="margin-top:1px;opacity:0.7" title="Reference (baked at ${Math.round((clip.recordingSpeed||1)*100)}%)"></canvas>` : ''}
+        style="margin-top:1px;opacity:0.7" title="Reference track"></canvas>` : ''}
       <div class="clip-transport">
         <button class="clip-play-btn" id="clip-btn-${clip.id}"
           onclick="toggleClipPlay(${clip.id})">▶</button>
         <span class="clip-time" id="clip-time-${clip.id}">0:00 / ${durStr}</span>
-        <span class="take-badge" title="Recorded at this tempo">${Math.round((clip.recordingSpeed||1)*100)}%</span>
         <button class="clip-save-btn" onclick="saveOneClip(${clip.id})"
           title="Save as WAV — mix reflects current volume/mute settings">⬇ .wav</button>
       </div>
@@ -3665,6 +3743,9 @@ function toggleClipPlay(clipId) {
     refAudio = new Audio();
     refAudio.src = URL.createObjectURL(clip.refBlob);
     refAudio.currentTime = 0;
+    // Play at recordingSpeed with pitch correction — matches how reference played during recording
+    refAudio.playbackRate = clip.recordingSpeed || 1.0;
+    refAudio.preservesPitch = true;
     refGain.connect(ctx.destination);
     const refSrc = ctx.createMediaElementSource(refAudio);
     refSrc.connect(refGain);
