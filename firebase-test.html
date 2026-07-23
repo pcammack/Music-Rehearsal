@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Firebase Test</title>
+<style>
+  body{font-family:sans-serif;max-width:500px;margin:3rem auto;padding:0 1rem;color:#222}
+  button{font-size:1rem;padding:0.6rem 1.2rem;cursor:pointer;margin:0.5rem 0.5rem 0.5rem 0}
+  #status{margin-top:1.5rem;padding:1rem;background:#f4f4f4;border-radius:6px;white-space:pre-wrap;font-family:monospace;font-size:0.9rem}
+  .ok{color:#1a7a1a}
+  .err{color:#b02a2a}
+</style>
+</head>
+<body>
+
+<h2>Firebase connection test</h2>
+<p>This page checks two things: (1) can you sign in with Google, and (2) can the app write a small piece of test data to your database.</p>
+
+<button id="signin-btn">Sign in with Google</button>
+<button id="write-btn" disabled>Write test data</button>
+<button id="signout-btn" disabled>Sign out</button>
+
+<div id="status">Not signed in yet.</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import {
+    getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+  import {
+    getFirestore, doc, setDoc, serverTimestamp
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+  // ─────────────────────────────────────────────
+  // PASTE YOUR CONFIG BLOCK FROM FIREBASE HERE
+  // (Project settings → Your apps → the </> web app)
+  // ─────────────────────────────────────────────
+  const firebaseConfig = {
+    apiKey: "AIzaSyCUyXe-JszYsbY1XJ8bhjtdHhrajIcHFDA",
+    authDomain: "rehearsal-space-f1642.firebaseapp.com",
+    projectId: "rehearsal-space-f1642",
+    storageBucket: "rehearsal-space-f1642.firebasestorage.app",
+    messagingSenderId: "851638184114",
+    appId: "1:851638184114:web:be41418c0975b0b75f81ab"
+  };
+  // ─────────────────────────────────────────────
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const provider = new GoogleAuthProvider();
+
+  const statusEl = document.getElementById('status');
+  const signinBtn = document.getElementById('signin-btn');
+  const writeBtn = document.getElementById('write-btn');
+  const signoutBtn = document.getElementById('signout-btn');
+
+  function log(msg, cls) {
+    const line = document.createElement('div');
+    if (cls) line.className = cls;
+    line.textContent = msg;
+    statusEl.appendChild(line);
+  }
+
+  signinBtn.onclick = async () => {
+    statusEl.innerHTML = '';
+    log('Opening Google sign-in popup…');
+    try {
+      const result = await signInWithPopup(auth, provider);
+      log(`✓ Signed in as ${result.user.email}`, 'ok');
+    } catch (e) {
+      log(`✗ Sign-in failed: ${e.code} — ${e.message}`, 'err');
+    }
+  };
+
+  writeBtn.onclick = async () => {
+    const user = auth.currentUser;
+    if (!user) { log('✗ Not signed in.', 'err'); return; }
+    log('Writing test document…');
+    try {
+      await setDoc(doc(db, 'connection_tests', user.uid), {
+        email: user.email,
+        testedAt: serverTimestamp(),
+        message: 'Hello from the Rehearsal Space test page!'
+      });
+      log('✓ Write succeeded — check Firestore console for a "connection_tests" collection.', 'ok');
+    } catch (e) {
+      log(`✗ Write failed: ${e.code} — ${e.message}`, 'err');
+    }
+  };
+
+  signoutBtn.onclick = async () => {
+    await signOut(auth);
+    log('Signed out.');
+  };
+
+  onAuthStateChanged(auth, user => {
+    if (user) {
+      writeBtn.disabled = false;
+      signoutBtn.disabled = false;
+      signinBtn.disabled = true;
+    } else {
+      writeBtn.disabled = true;
+      signoutBtn.disabled = true;
+      signinBtn.disabled = false;
+    }
+  });
+</script>
+
+</body>
+</html>
