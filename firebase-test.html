@@ -20,6 +20,14 @@
 <button id="write-btn" disabled>Write test data</button>
 <button id="signout-btn" disabled>Sign out</button>
 
+<hr style="margin:1.5rem 0;border:none;border-top:1px solid #ddd">
+
+<h3>Storage test — upload a real mp3</h3>
+<p>Pick a small mp3 from your computer. This uploads it to Firebase Storage, then immediately fetches it back and plays it — confirming the full round trip works.</p>
+<input type="file" id="file-input" accept="audio/*" disabled>
+<button id="upload-btn" disabled>Upload &amp; test playback</button>
+<div id="audio-container" style="margin-top:0.75rem"></div>
+
 <div id="status">Not signed in yet.</div>
 
 <script type="module">
@@ -30,6 +38,9 @@
   import {
     getFirestore, doc, setDoc, serverTimestamp
   } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+  import {
+    getStorage, ref, uploadBytes, getDownloadURL
+  } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-storage.js";
 
   // ─────────────────────────────────────────────
   // PASTE YOUR CONFIG BLOCK FROM FIREBASE HERE
@@ -48,12 +59,16 @@
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
+  const storage = getStorage(app);
   const provider = new GoogleAuthProvider();
 
   const statusEl = document.getElementById('status');
   const signinBtn = document.getElementById('signin-btn');
   const writeBtn = document.getElementById('write-btn');
   const signoutBtn = document.getElementById('signout-btn');
+  const fileInput = document.getElementById('file-input');
+  const uploadBtn = document.getElementById('upload-btn');
+  const audioContainer = document.getElementById('audio-container');
 
   function log(msg, cls) {
     const line = document.createElement('div');
@@ -94,15 +109,46 @@
     log('Signed out.');
   };
 
+  uploadBtn.onclick = async () => {
+    const user = auth.currentUser;
+    if (!user) { log('✗ Not signed in.', 'err'); return; }
+    const file = fileInput.files[0];
+    if (!file) { log('✗ Pick a file first.', 'err'); return; }
+
+    audioContainer.innerHTML = '';
+    log(`Uploading "${file.name}" (${(file.size/1024/1024).toFixed(2)} MB)…`);
+    try {
+      const fileRef = ref(storage, `connection_tests/${user.uid}/${file.name}`);
+      await uploadBytes(fileRef, file);
+      log('✓ Upload succeeded.', 'ok');
+
+      log('Fetching download URL…');
+      const url = await getDownloadURL(fileRef);
+      log('✓ Got download URL — loading player below.', 'ok');
+
+      const audioEl = document.createElement('audio');
+      audioEl.controls = true;
+      audioEl.src = url;
+      audioEl.style.width = '100%';
+      audioContainer.appendChild(audioEl);
+    } catch (e) {
+      log(`✗ Storage test failed: ${e.code} — ${e.message}`, 'err');
+    }
+  };
+
   onAuthStateChanged(auth, user => {
     if (user) {
       writeBtn.disabled = false;
       signoutBtn.disabled = false;
       signinBtn.disabled = true;
+      fileInput.disabled = false;
+      uploadBtn.disabled = false;
     } else {
       writeBtn.disabled = true;
       signoutBtn.disabled = true;
       signinBtn.disabled = false;
+      fileInput.disabled = true;
+      uploadBtn.disabled = true;
     }
   });
 </script>
