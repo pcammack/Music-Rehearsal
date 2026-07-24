@@ -392,7 +392,8 @@ input[type=file]{display:none}
 .lib-sort-btn{background:none;border:1px solid var(--border);color:var(--text-faint);font-family:'JetBrains Mono',monospace;font-size:0.38rem;padding:0.08rem 0.35rem;cursor:pointer;transition:all 0.15s;white-space:nowrap}
 .lib-sort-btn:hover{border-color:var(--border-l);color:var(--text)}
 .lib-sort-btn.active{background:var(--bg3);border-color:var(--accent);color:var(--accent)}
-/* ── CATEGORY GROUPS ── */
+/* ── LIBRARY GROUPS (rendered with the same collapsible-section styling
+   the old flat "category" grouping used) ── */
 .lib-category-hdr{display:flex;align-items:center;justify-content:space-between;
   padding:0.3rem 0.5rem;cursor:pointer;border-bottom:1px solid var(--border);
   background:var(--bg3);user-select:none;transition:background 0.1s}
@@ -411,13 +412,41 @@ input[type=file]{display:none}
   overflow:hidden;text-overflow:ellipsis}
 .lib-cat-select:hover{border-color:var(--border);color:var(--text-mid)}
 .lib-cat-select:focus{border-color:var(--accent);color:var(--text)}
-/* category field in new-piece form */
-.lib-cat-new-input{background:var(--bg3);border:1px solid var(--border);
-  color:var(--text);font-family:'JetBrains Mono',monospace;font-size:0.48rem;
-  padding:0.18rem 0.35rem;outline:none;transition:border-color 0.15s;
-  width:110px;flex-shrink:0}
-.lib-cat-new-input:focus{border-color:var(--accent)}
-.lib-cat-new-input::placeholder{color:var(--text-faint)}
+/* library select in new-piece form */
+.lib-new-select{background:var(--bg3);border:1px solid var(--border);
+  color:var(--text);font-family:'JetBrains Mono',monospace;font-size:0.46rem;
+  padding:0.18rem 0.3rem;outline:none;transition:border-color 0.15s;
+  width:120px;flex-shrink:0}
+.lib-new-select:focus{border-color:var(--accent)}
+/* ── LIBRARY / COLLECTION MANAGER CHIPS ── */
+.lib-chip-row{display:flex;flex-wrap:wrap;gap:0.3rem;padding:0.35rem 0.5rem;
+  border-bottom:1px solid var(--border);align-items:center}
+.lib-chip-label{font-size:0.34rem;color:var(--text-faint);letter-spacing:0.1em;
+  text-transform:uppercase;margin-right:0.15rem;flex-shrink:0}
+.lib-chip{display:inline-flex;align-items:center;gap:0.3rem;background:var(--bg3);
+  border:1px solid var(--border);padding:0.1rem 0.4rem;font-size:0.4rem;
+  color:var(--text-mid)}
+.lib-chip-del{cursor:pointer;color:var(--text-faint);transition:color 0.15s}
+.lib-chip-del:hover{color:var(--red)}
+.lib-chip-add-input{background:none;border:1px solid var(--border);color:var(--text);
+  font-family:'JetBrains Mono',monospace;font-size:0.4rem;padding:0.1rem 0.3rem;
+  outline:none;width:110px;transition:border-color 0.15s}
+.lib-chip-add-input:focus{border-color:var(--accent)}
+.lib-chip-add-input::placeholder{color:var(--text-faint)}
+.lib-chip-link{font-size:0.36rem;color:var(--text-faint);cursor:pointer;
+  text-decoration:underline;text-underline-offset:2px}
+.lib-chip-link:hover{color:var(--text-mid)}
+/* ── COLLECTION PILLS ON PIECE ROWS ── */
+.lib-collection-pills{display:flex;flex-wrap:wrap;gap:0.2rem;margin-top:0.15rem}
+.lib-collection-pill{font-size:0.34rem;padding:0.03rem 0.3rem;border:1px solid var(--border);
+  color:var(--text-faint);cursor:pointer;transition:all 0.15s;white-space:nowrap}
+.lib-collection-pill:hover{border-color:var(--border-l);color:var(--text-mid)}
+.lib-collection-pill.active{background:var(--accent);border-color:var(--accent);color:#1a1a1a}
+/* collection filter dropdown */
+.lib-filter-select{background:var(--bg3);border:1px solid var(--border);color:var(--text-faint);
+  font-family:'JetBrains Mono',monospace;font-size:0.38rem;padding:0.08rem 0.3rem;
+  cursor:pointer;outline:none;transition:all 0.15s}
+.lib-filter-select:hover{border-color:var(--border-l);color:var(--text-mid)}
 /* ── PASSAGE QUEUE ── */
 .queue-btn-bar{display:flex;align-items:center;gap:0.5rem;padding:0.25rem 0.1rem;margin-bottom:0.2rem;flex-wrap:wrap}
 .queue-play-btn{background:var(--green);border:1px solid var(--green);color:#fff;font-family:'JetBrains Mono',monospace;font-size:0.42rem;padding:0.1rem 0.5rem;cursor:pointer;letter-spacing:0.05em;transition:all 0.15s}
@@ -887,11 +916,16 @@ input[type=file]{display:none}
     </div>
     <!-- Import feedback -->
     <div class="import-notice" id="import-notice"></div>
+    <!-- Library manager: permanent, one-per-piece, renameable groupings -->
+    <div class="lib-chip-row" id="library-manager"></div>
+    <!-- Collection manager: flexible, non-exclusive, temporary groupings -->
+    <div class="lib-chip-row" id="collection-manager"></div>
     <div class="lib-sort-bar">
       <span class="lib-sort-label">Sort:</span>
       <button class="lib-sort-btn active" id="lib-sort-alpha" onclick="setLibSort('alpha')">A–Z</button>
       <button class="lib-sort-btn" id="lib-sort-competence" onclick="setLibSort('competence')">By level</button>
       <button class="lib-sort-btn" id="lib-sort-date" onclick="setLibSort('date')">By target date</button>
+      <span id="collection-filter-wrap" style="margin-left:auto"></span>
     </div>
     <div id="sessions-list"><span class="lib-empty">No pieces saved yet.</span></div>
     <!-- Add new piece -->
@@ -899,11 +933,7 @@ input[type=file]{display:none}
       <input class="lib-new-input" id="new-piece-input"
         placeholder="New piece name…"
         onkeydown="if(event.key==='Enter')addNewPiece()">
-      <input class="lib-cat-new-input" id="new-piece-category"
-        placeholder="Category…"
-        list="category-datalist"
-        onkeydown="if(event.key==='Enter')addNewPiece()">
-      <datalist id="category-datalist"></datalist>
+      <select class="lib-new-select" id="new-piece-library" title="Library"></select>
       <input type="file" id="new-piece-audio" accept=".mp3,.m4a,.wav,.aiff,.aif,.flac,audio/*"
         style="display:none" onchange="onNewPieceAudio(this.files[0])">
       <button class="btn-sm primary" onclick="addNewPiece()">+ Add</button>
@@ -916,7 +946,10 @@ input[type=file]{display:none}
       <span>Documentation</span><span id="docs-arrow">▸</span>
     </button>
     <div class="collapsible-body" id="docs-body">
-      <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v7.5</span>
+      <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v7.6</span>
+
+      <div class="doc-h">WHAT'S NEW IN v7.6</div>
+      · <strong style="color:var(--text)">Libraries + Collections replace flat categories:</strong> Libraries are a piece's permanent home — exactly one per piece, renameable, and built to support nesting later. Collections are flexible, non-exclusive groupings — a piece can sit in zero, one, or several at once (e.g. a concert setlist drawn from multiple libraries), independent of its library. Deleting a library never deletes piece data — affected pieces just move to Uncategorised. Deleting a collection only removes the tag from pieces; the pieces themselves are never touched. Existing pieces were migrated automatically on first load.<br>
 
       <div class="doc-h">WHAT'S NEW IN v7.5</div>
       · <strong style="color:var(--text)">MediaRecorder warm-up gap fixed:</strong> Recording start time is now captured on the first actual audio chunk rather than at the moment mediaRecorder.start() is called. This absorbs the ~130ms browser/hardware initialisation delay that was causing the reference track to play ahead of the recording.<br>
@@ -1036,38 +1069,285 @@ let currentPieceTargetDate = null;
 const LIB_SORT_KEY = 'rs_lib_sort_v1';
 let libSort = localStorage.getItem(LIB_SORT_KEY) || 'alpha';
 
-// Category collapsed state — persisted in localStorage
-const CAT_COLLAPSED_KEY = 'rs_cat_collapsed_v1';
-function _getCatCollapsed() {
-  try { return JSON.parse(localStorage.getItem(CAT_COLLAPSED_KEY) || '{}'); } catch(e) { return {}; }
+// ══════════════════════════════════════════════
+// LIBRARIES + COLLECTIONS
+// ══════════════════════════════════════════════
+// Libraries: a piece's permanent home — exactly one per piece, renameable,
+//   referenced by id (never by name) so renames never orphan anything.
+//   `parentId` is banked now for future nested sub-libraries; unused in the
+//   UI today, which renders libraries as a flat list.
+// Collections: flexible, non-exclusive, temporary groupings — a piece can
+//   belong to zero, one, or several at once, independent of its library
+//   (e.g. a concert setlist drawn from Solo + Ensemble + Pop pieces at once,
+//   archived after the concert without moving anything out of its library).
+//
+// Both live as extra top-level keys inside the same mr_sessions_v4 object
+// as __order__, so existing export/import/folder-sync code carries them
+// automatically with no changes needed there.
+
+const META_KEYS = ['__order__', '__libraries__', '__collections__'];
+function _isMetaKey(k) { return META_KEYS.includes(k); }
+
+function _newId(prefix) {
+  return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
-function _setCatCollapsed(obj) {
-  try { localStorage.setItem(CAT_COLLAPSED_KEY, JSON.stringify(obj)); } catch(e) {}
+
+// Known real-piece → library name mapping, used only for the one-time
+// migration of pre-existing data (matches the May 2026 library export).
+// Anything not listed here falls back to Uncategorised rather than guessing.
+const _MIGRATION_LIBRARY_MAP = {
+  'Dvorak Quartet 12-I': 'Ensemble',
+  'Dvorak Quartet 12-II': 'Ensemble',
+  'Borodin Quartet 2-I': 'Ensemble',
+  'Borodin Quartet 2-III': 'Ensemble',
+  'Villa Lobos - Etude 1': 'Solo',
+  'Villa Lobos - Etude 2': 'Solo',
+  'Villa Lobos - Etude 4': 'Solo',
+  'Villa Lobos - Etude 5': 'Solo',
+  'Villa Lobos - Etude 7': 'Solo',
+  'Imogen Heap - Hide and Seek': 'Pop',
+  'Sweet Disposition': 'Pop',
+  'Birds of a Feather': 'Pop',
+  'Innerbloom': 'Pop',
+  'Halo (midi)': 'Pop',
+  'Jashn e Bahara': 'Pop'
+};
+
+// Runs once: creates the __libraries__/__collections__ registries if absent,
+// auto-assigns known real pieces into them by name, and back-fills
+// libraryId/collectionIds on any piece missing those fields. Guarded by the
+// presence of __libraries__ so it never re-runs and clobbers later edits.
+// Returns true if it performed first-time migration (caller should persist).
+function _ensureLibrariesInitialized(sessions) {
+  let migrated = false;
+  if (!sessions.__libraries__) {
+    migrated = true;
+    const defaults = ['Solo', 'Ensemble', 'Jazz', 'Pop'];
+    const libs = {};
+    const nameToId = {};
+    defaults.forEach(n => {
+      const id = _newId('lib');
+      libs[id] = { id, name: n, parentId: null };
+      nameToId[n] = id;
+    });
+    sessions.__libraries__ = libs;
+    if (!sessions.__collections__) sessions.__collections__ = {};
+    Object.keys(sessions).filter(k => !_isMetaKey(k)).forEach(k => {
+      const s = sessions[k];
+      if (s.libraryId === undefined) {
+        const libName = _MIGRATION_LIBRARY_MAP[s.pieceName || k];
+        s.libraryId = libName ? (nameToId[libName] || null) : null;
+      }
+      if (!Array.isArray(s.collectionIds)) s.collectionIds = [];
+    });
+  }
+  if (!sessions.__collections__) { sessions.__collections__ = {}; migrated = true; }
+  // Safety net for any piece objects (e.g. from a later import) missing the fields
+  Object.keys(sessions).filter(k => !_isMetaKey(k)).forEach(k => {
+    const s = sessions[k];
+    if (s.libraryId === undefined) s.libraryId = null;
+    if (!Array.isArray(s.collectionIds)) s.collectionIds = [];
+  });
+  return migrated;
 }
-function toggleCategoryCollapse(catName) {
-  const state = _getCatCollapsed();
-  state[catName] = !state[catName];
-  _setCatCollapsed(state);
+
+// Library collapse state — persisted in localStorage, keyed by library id
+// (not name) so renaming a library never resets its collapsed/open state.
+const LIB_COLLAPSED_KEY = 'rs_lib_collapsed_v2';
+function _getLibCollapsed() {
+  try { return JSON.parse(localStorage.getItem(LIB_COLLAPSED_KEY) || '{}'); } catch(e) { return {}; }
+}
+function _setLibCollapsed(obj) {
+  try { localStorage.setItem(LIB_COLLAPSED_KEY, JSON.stringify(obj)); } catch(e) {}
+}
+function toggleLibraryCollapse(libKey) {
+  const state = _getLibCollapsed();
+  state[libKey] = !state[libKey];
+  _setLibCollapsed(state);
   renderSessionsList();
 }
 
-// Collect all distinct categories from the sessions store
-async function _getAllCategories() {
+// ── Library CRUD ──
+async function createLibrary(name, parentId) {
+  const trimmed = (name || '').trim();
+  if (!trimmed) return null;
   const sessions = await loadSessionsFromStorage();
-  const cats = new Set();
-  Object.keys(sessions).filter(k => k !== '__order__').forEach(k => {
-    const c = sessions[k].category;
-    if (c && c.trim()) cats.add(c.trim());
-  });
-  return [...cats].sort();
+  const id = _newId('lib');
+  sessions.__libraries__[id] = { id, name: trimmed, parentId: parentId || null };
+  await saveSessionsToStorage(sessions);
+  renderSessionsList();
+  return id;
 }
 
-// Update the datalist for the new-piece category input
-async function _refreshCategoryDatalist() {
-  const dl = document.getElementById('category-datalist');
-  if (!dl) return;
-  const cats = await _getAllCategories();
-  dl.innerHTML = cats.map(c => `<option value="${escHtml(c)}">`).join('');
+async function renameLibrary(id) {
+  const sessions = await loadSessionsFromStorage();
+  const lib = sessions.__libraries__[id];
+  if (!lib) return;
+  const newName = prompt('Rename library:', lib.name);
+  if (!newName || !newName.trim()) return;
+  lib.name = newName.trim();
+  await saveSessionsToStorage(sessions);
+  renderSessionsList();
+}
+
+async function deleteLibrary(id) {
+  const sessions = await loadSessionsFromStorage();
+  const lib = sessions.__libraries__[id];
+  if (!lib) return;
+  const affected = Object.keys(sessions).filter(k => !_isMetaKey(k) && sessions[k].libraryId === id);
+  const msg = affected.length
+    ? `Delete library "${lib.name}"? ${affected.length} piece${affected.length!==1?'s':''} will move to Uncategorised.\n\nThis never deletes piece data — audio, markers, passages, notes and recordings are all untouched.`
+    : `Delete library "${lib.name}"?`;
+  if (!confirm(msg)) return;
+  affected.forEach(k => { sessions[k].libraryId = null; });
+  delete sessions.__libraries__[id];
+  await saveSessionsToStorage(sessions);
+  renderSessionsList();
+}
+
+async function setPieceLibrary(name, libId) {
+  const sessions = await loadSessionsFromStorage();
+  if (!sessions[name]) return;
+  sessions[name].libraryId = libId || null;
+  await saveSessionsToStorage(sessions);
+  renderSessionsList();
+}
+
+// ── Collection CRUD ──
+let showArchivedCollections = false;
+function toggleArchivedCollectionsView() {
+  showArchivedCollections = !showArchivedCollections;
+  renderCollectionManager();
+}
+
+async function createCollection(name) {
+  const trimmed = (name || '').trim();
+  if (!trimmed) return null;
+  const sessions = await loadSessionsFromStorage();
+  const id = _newId('col');
+  sessions.__collections__[id] = { id, name: trimmed, archived: false };
+  await saveSessionsToStorage(sessions);
+  renderSessionsList();
+  return id;
+}
+
+async function renameCollection(id) {
+  const sessions = await loadSessionsFromStorage();
+  const col = sessions.__collections__[id];
+  if (!col) return;
+  const newName = prompt('Rename collection:', col.name);
+  if (!newName || !newName.trim()) return;
+  col.name = newName.trim();
+  await saveSessionsToStorage(sessions);
+  renderSessionsList();
+}
+
+async function archiveCollection(id) {
+  const sessions = await loadSessionsFromStorage();
+  const col = sessions.__collections__[id];
+  if (!col) return;
+  col.archived = true;
+  await saveSessionsToStorage(sessions);
+  renderSessionsList();
+}
+
+async function unarchiveCollection(id) {
+  const sessions = await loadSessionsFromStorage();
+  const col = sessions.__collections__[id];
+  if (!col) return;
+  col.archived = false;
+  await saveSessionsToStorage(sessions);
+  renderSessionsList();
+}
+
+async function deleteCollectionPermanently(id) {
+  const sessions = await loadSessionsFromStorage();
+  const col = sessions.__collections__[id];
+  if (!col) return;
+  if (!confirm(`Permanently delete collection "${col.name}"?\n\nThis can't be undone. As always, the pieces themselves — audio, markers, notes — are never affected; this just removes the tag.`)) return;
+  delete sessions.__collections__[id];
+  Object.keys(sessions).filter(k => !_isMetaKey(k)).forEach(k => {
+    if (Array.isArray(sessions[k].collectionIds)) {
+      sessions[k].collectionIds = sessions[k].collectionIds.filter(cid => cid !== id);
+    }
+  });
+  if (collectionFilter === id) collectionFilter = '';
+  await saveSessionsToStorage(sessions);
+  renderSessionsList();
+}
+
+async function togglePieceCollection(name, colId) {
+  const sessions = await loadSessionsFromStorage();
+  if (!sessions[name]) return;
+  const s = sessions[name];
+  if (!Array.isArray(s.collectionIds)) s.collectionIds = [];
+  const idx = s.collectionIds.indexOf(colId);
+  if (idx === -1) s.collectionIds.push(colId); else s.collectionIds.splice(idx, 1);
+  await saveSessionsToStorage(sessions);
+  renderSessionsList();
+}
+
+// ── View filter: show only pieces in a given active collection ──
+let collectionFilter = '';
+function setCollectionFilter(id) {
+  collectionFilter = id;
+  renderSessionsList();
+}
+
+// ── Manager strip renderers (library chips / collection chips) ──
+async function renderLibraryManager() {
+  const el = document.getElementById('library-manager');
+  if (!el) return;
+  const sessions = await loadSessionsFromStorage();
+  const libs = Object.values(sessions.__libraries__ || {}).sort((a, b) => a.name.localeCompare(b.name));
+  const chips = libs.map(l => `<span class="lib-chip">
+      <span ondblclick="renameLibrary('${l.id}')" title="Double-click to rename">${escHtml(l.name)}</span>
+      <span class="lib-chip-del" onclick="deleteLibrary('${l.id}')" title="Delete library — pieces move to Uncategorised, piece data is never deleted">✕</span>
+    </span>`).join('');
+  el.innerHTML = `<span class="lib-chip-label">Libraries</span>${chips}
+    <input class="lib-chip-add-input" id="new-library-input" placeholder="+ New library…"
+      onkeydown="if(event.key==='Enter'){createLibrary(this.value);this.value='';}">`;
+  _refreshNewPieceLibrarySelect();
+}
+
+async function renderCollectionManager() {
+  const el = document.getElementById('collection-manager');
+  if (!el) return;
+  const sessions = await loadSessionsFromStorage();
+  const all = Object.values(sessions.__collections__ || {});
+  const active = all.filter(c => !c.archived).sort((a, b) => a.name.localeCompare(b.name));
+  const archived = all.filter(c => c.archived).sort((a, b) => a.name.localeCompare(b.name));
+  const chips = active.map(c => `<span class="lib-chip">
+      <span ondblclick="renameCollection('${c.id}')" title="Double-click to rename">${escHtml(c.name)}</span>
+      <span class="lib-chip-del" onclick="archiveCollection('${c.id}')" title="Archive — pieces keep their tag history, just stops showing here">✕</span>
+    </span>`).join('');
+  let archivedHtml = '';
+  if (archived.length) {
+    archivedHtml = showArchivedCollections
+      ? `<div style="width:100%;display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.25rem">
+          ${archived.map(c => `<span class="lib-chip" style="opacity:0.55">
+            <span>${escHtml(c.name)}</span>
+            <span class="lib-chip-del" onclick="unarchiveCollection('${c.id}')" title="Restore">↺</span>
+            <span class="lib-chip-del" onclick="deleteCollectionPermanently('${c.id}')" title="Delete permanently">✕</span>
+          </span>`).join('')}
+          <span class="lib-chip-link" onclick="toggleArchivedCollectionsView()">hide archived</span>
+        </div>`
+      : `<span class="lib-chip-link" onclick="toggleArchivedCollectionsView()">${archived.length} archived</span>`;
+  }
+  el.innerHTML = `<span class="lib-chip-label">Collections</span>${chips}
+    <input class="lib-chip-add-input" id="new-collection-input" placeholder="+ New collection…"
+      onkeydown="if(event.key==='Enter'){createCollection(this.value);this.value='';}">
+    ${archivedHtml}`;
+}
+
+// Populate the "Library" <select> in the add-new-piece form
+async function _refreshNewPieceLibrarySelect() {
+  const sel = document.getElementById('new-piece-library');
+  if (!sel) return;
+  const sessions = await loadSessionsFromStorage();
+  const libs = Object.values(sessions.__libraries__ || {}).sort((a, b) => a.name.localeCompare(b.name));
+  sel.innerHTML = `<option value="">— uncategorised —</option>` +
+    libs.map(l => `<option value="${l.id}">${escHtml(l.name)}</option>`).join('');
 }
 
 function _migrateStatusLabels(segs) {
@@ -2394,10 +2674,14 @@ function loadSession() {
 const SESSIONS_STORAGE_KEY = 'mr_sessions_v4';
 
 async function loadSessionsFromStorage() {
+  let sessions;
   try {
     const raw = localStorage.getItem(SESSIONS_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch(e) { return {}; }
+    sessions = raw ? JSON.parse(raw) : {};
+  } catch(e) { sessions = {}; }
+  const migrated = _ensureLibrariesInitialized(sessions);
+  if (migrated) await saveSessionsToStorage(sessions);
+  return sessions;
 }
 async function saveSessionsToStorage(sessions) {
   try { localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(sessions)); } catch(e) {}
@@ -2416,7 +2700,7 @@ async function saveSessionToStorage() {
     notes: document.getElementById('piece-notes').value,
     savedAt: Date.now()
   };
-  const order = sessions.__order__ || Object.keys(sessions).filter(k=>k!=='__order__');
+  const order = sessions.__order__ || Object.keys(sessions).filter(k=>!_isMetaKey(k));
   if (!order.includes(trimmed)) order.push(trimmed);
   sessions.__order__ = order;
   await saveSessionsToStorage(sessions);
@@ -2430,15 +2714,14 @@ async function addNewPiece() {
   const input = document.getElementById('new-piece-input');
   const name = input ? input.value.trim() : '';
   if (!name) { if (input) input.focus(); return; }
-  const catInput = document.getElementById('new-piece-category');
-  const category = catInput ? catInput.value.trim() : '';
+  const libSelect = document.getElementById('new-piece-library');
+  const libraryId = libSelect ? (libSelect.value || null) : null;
 
   // Check if piece already exists
   const sessions = await loadSessionsFromStorage();
   if (sessions[name]) {
     // Already exists — just load it
     if (input) input.value = '';
-    if (catInput) catInput.value = '';
     await loadNamedSession(name);
     return;
   }
@@ -2449,15 +2732,14 @@ async function addNewPiece() {
     markers: [], markerIdCounter: 0,
     segments: [], segmentIdCounter: 0,
     notes: '', savedAt: Date.now(),
-    category: category || null
+    libraryId: libraryId || null,
+    collectionIds: []
   };
   const order = sessions.__order__ || [];
   if (!order.includes(name)) order.push(name);
   sessions.__order__ = order;
   await saveSessionsToStorage(sessions);
   if (input) input.value = '';
-  if (catInput) catInput.value = '';
-  _refreshCategoryDatalist();
 
   // Set as current piece
   currentPieceName = name;
@@ -2552,7 +2834,7 @@ async function renameSession(oldName) {
   sessions[trimmed] = { ...sessions[oldName] };
   delete sessions[oldName];
   // Update order array
-  const order = sessions.__order__ || Object.keys(sessions).filter(k=>k!=='__order__');
+  const order = sessions.__order__ || Object.keys(sessions).filter(k=>!_isMetaKey(k));
   const oi = order.indexOf(oldName);
   if (oi !== -1) order[oi] = trimmed;
   sessions.__order__ = order;
@@ -2574,15 +2856,6 @@ function setLibSort(mode) {
     const btn = document.getElementById('lib-sort-' + m);
     if (btn) btn.classList.toggle('active', m === mode);
   });
-  renderSessionsList();
-}
-
-async function setPieceCategory(name, val) {
-  const sessions = await loadSessionsFromStorage();
-  if (!sessions[name]) return;
-  sessions[name].category = val.trim() || null;
-  await saveSessionsToStorage(sessions);
-  _refreshCategoryDatalist();
   renderSessionsList();
 }
 
@@ -2660,17 +2933,29 @@ function _renderPieceRow(name, s, sessions) {
       onclick="event.stopPropagation()"
       onchange="event.stopPropagation();_hideDateInput('${safeJs}',this.value)"
       onblur="event.stopPropagation();_hideDateInput('${safeJs}',this.value)">`;
-  // Category select — all known categories plus blank
-  const allCats = Object.keys(sessions).filter(k=>k!=='__order__')
-    .map(k=>sessions[k].category).filter(Boolean)
-    .filter((v,i,a)=>a.indexOf(v)===i).sort();
-  const catOptions = ['<option value="">— uncategorised —</option>',
-    ...allCats.map(c=>`<option value="${escHtml(c)}"${s.category===c?' selected':''}>${escHtml(c)}</option>`)
+  // Library select — sourced from the __libraries__ registry (id-referenced,
+  // so renaming a library never desyncs this dropdown)
+  const libraries = sessions.__libraries__ || {};
+  const libList = Object.values(libraries).sort((a,b)=>a.name.localeCompare(b.name));
+  const libOptions = ['<option value="">— uncategorised —</option>',
+    ...libList.map(l=>`<option value="${l.id}"${s.libraryId===l.id?' selected':''}>${escHtml(l.name)}</option>`)
   ].join('');
-  const catSelect = `<select class="lib-cat-select"
+  const libSelect = `<select class="lib-cat-select"
     onclick="event.stopPropagation()"
-    onchange="event.stopPropagation();setPieceCategory('${safeJs}',this.value)"
-    title="Category">${catOptions}</select>`;
+    onchange="event.stopPropagation();setPieceLibrary('${safeJs}',this.value)"
+    title="Library">${libOptions}</select>`;
+  // Collection pills — non-exclusive, click to toggle membership
+  const collections = sessions.__collections__ || {};
+  const activeCollections = Object.values(collections).filter(c=>!c.archived).sort((a,b)=>a.name.localeCompare(b.name));
+  const pieceCollectionIds = Array.isArray(s.collectionIds) ? s.collectionIds : [];
+  const collectionPillsHtml = activeCollections.length ? `<div class="lib-collection-pills">
+      ${activeCollections.map(c => {
+        const on = pieceCollectionIds.includes(c.id);
+        return `<span class="lib-collection-pill${on?' active':''}"
+          onclick="event.stopPropagation();togglePieceCollection('${safeJs}','${c.id}')"
+          title="${on?'In collection '+escHtml(c.name)+' — click to remove':'Add to collection '+escHtml(c.name)}">${escHtml(c.name)}</span>`;
+      }).join('')}
+    </div>` : '';
   return `<div class="lib-row${isActive?' active':''}"
       data-name="${safe}" draggable="true"
       onclick="loadNamedSession('${safeJs}')"
@@ -2686,9 +2971,10 @@ function _renderPieceRow(name, s, sessions) {
           title="Double-click to rename">${safe}</span>
       </span>
       <span class="lib-meta">${mc} mark${mc!==1?'s':''} · ${sc} passage${sc!==1?'s':''} ${statusHtml}</span>
+      ${collectionPillsHtml}
     </div>
     <div class="lib-row-right" style="gap:0.3rem">
-      ${catSelect}
+      ${libSelect}
       ${targetDateHtml}
       <span class="lib-drag-handle" title="Drag to reorder">⠿</span>
       <span class="lib-date">${date}</span>
@@ -2706,7 +2992,7 @@ async function renderSessionsList() {
     if (btn) btn.classList.toggle('active', m === libSort);
   });
 
-  const allKeys = Object.keys(sessions).filter(k => k !== '__order__');
+  const allKeys = Object.keys(sessions).filter(k => !_isMetaKey(k));
   const storedOrder = sessions.__order__ || [];
   let orderedKeys = [
     ...storedOrder.filter(k => allKeys.includes(k)),
@@ -2732,39 +3018,66 @@ async function renderSessionsList() {
     });
   }
 
-  if (!orderedKeys.length) { el.innerHTML = '<span class="lib-empty">No pieces saved yet.</span>'; return; }
+  // Collection filter — "what am I currently working on", independent of library
+  if (collectionFilter) {
+    orderedKeys = orderedKeys.filter(name =>
+      Array.isArray(sessions[name]?.collectionIds) && sessions[name].collectionIds.includes(collectionFilter)
+    );
+  }
 
-  // Group by category
-  const groups = {}; // categoryName -> [name, ...]
+  // Populate the collection-filter dropdown (kept in sync with __collections__)
+  const filterWrap = document.getElementById('collection-filter-wrap');
+  if (filterWrap) {
+    const activeCollections = Object.values(sessions.__collections__ || {})
+      .filter(c => !c.archived).sort((a,b)=>a.name.localeCompare(b.name));
+    if (activeCollections.length) {
+      const opts = ['<option value="">All pieces</option>',
+        ...activeCollections.map(c => `<option value="${c.id}"${collectionFilter===c.id?' selected':''}>${escHtml(c.name)}</option>`)
+      ].join('');
+      filterWrap.innerHTML = `<select class="lib-filter-select" onchange="setCollectionFilter(this.value)" title="Filter by collection">${opts}</select>`;
+    } else {
+      filterWrap.innerHTML = '';
+    }
+  }
+
+  renderLibraryManager();
+  renderCollectionManager();
+
+  if (!orderedKeys.length) {
+    el.innerHTML = `<span class="lib-empty">${collectionFilter ? 'No pieces in this collection.' : 'No pieces saved yet.'}</span>`;
+    return;
+  }
+
+  // Group by library
+  const groups = {}; // libraryId (or '__uncategorised__') -> [name, ...]
   orderedKeys.forEach(name => {
-    const cat = sessions[name]?.category?.trim() || '';
-    const key = cat || '__uncategorised__';
+    const libId = sessions[name]?.libraryId || '';
+    const key = libId || '__uncategorised__';
     if (!groups[key]) groups[key] = [];
     groups[key].push(name);
   });
 
-  // Order: named categories alphabetically, then uncategorised last
-  const catKeys = Object.keys(groups)
+  const libraries = sessions.__libraries__ || {};
+  // Order: libraries alphabetically by name, uncategorised last
+  const libKeys = Object.keys(groups)
     .filter(k => k !== '__uncategorised__')
-    .sort();
-  if (groups['__uncategorised__']) catKeys.push('__uncategorised__');
+    .sort((a, b) => (libraries[a]?.name || '').localeCompare(libraries[b]?.name || ''));
+  if (groups['__uncategorised__']) libKeys.push('__uncategorised__');
 
   // If only one group (all uncategorised), render flat — no headers
-  if (catKeys.length === 1 && catKeys[0] === '__uncategorised__') {
+  if (libKeys.length === 1 && libKeys[0] === '__uncategorised__') {
     el.innerHTML = orderedKeys.map(name => _renderPieceRow(name, sessions[name], sessions)).join('');
-    _refreshCategoryDatalist();
     return;
   }
 
-  const collapsed = _getCatCollapsed();
+  const collapsed = _getLibCollapsed();
   let html = '';
-  catKeys.forEach(catKey => {
-    const displayName = catKey === '__uncategorised__' ? 'Uncategorised' : catKey;
-    const safeKey = escHtml(catKey);
-    const safeKeyJs = catKey.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-    const isOpen = !collapsed[catKey]; // default open
-    const pieces = groups[catKey];
-    html += `<div class="lib-category-hdr" onclick="toggleCategoryCollapse('${safeKeyJs}')">
+  libKeys.forEach(libKey => {
+    const displayName = libKey === '__uncategorised__' ? 'Uncategorised' : (libraries[libKey]?.name || 'Unknown library');
+    const safeKey = escHtml(displayName);
+    const isOpen = !collapsed[libKey]; // default open
+    const pieces = groups[libKey];
+    html += `<div class="lib-category-hdr" onclick="toggleLibraryCollapse('${libKey}')">
       <span class="lib-category-title">${safeKey}</span>
       <span style="display:flex;align-items:center;gap:0.5rem">
         <span class="lib-category-count">${pieces.length} piece${pieces.length!==1?'s':''}</span>
@@ -2776,7 +3089,6 @@ async function renderSessionsList() {
     </div>`;
   });
   el.innerHTML = html;
-  _refreshCategoryDatalist();
 }
 
 function libDragStart(e, name) {
@@ -2802,7 +3114,7 @@ async function libDrop(e, targetName) {
   e.currentTarget.style.borderTop = '';
   if (!_dragSrcName || _dragSrcName === targetName) return;
   const sessions = await loadSessionsFromStorage();
-  const allKeys = Object.keys(sessions).filter(k => k !== '__order__');
+  const allKeys = Object.keys(sessions).filter(k => !_isMetaKey(k));
   const storedOrder = sessions.__order__ || allKeys;
   const order = [...storedOrder.filter(k => allKeys.includes(k)),
                   ...allKeys.filter(k => !storedOrder.includes(k))];
@@ -2874,7 +3186,7 @@ function importLibraryJSON(file) {
 
     // Normalise each entry to the internal session format
     const normalised = {};
-    Object.keys(raw).filter(k => k !== '__order__').forEach(k => {
+    Object.keys(raw).filter(k => !_isMetaKey(k)).forEach(k => {
       const s = raw[k];
       if (!s || typeof s !== 'object') return;
       // Accept entries that have markers array OR pieceName
@@ -2897,7 +3209,9 @@ function importLibraryJSON(file) {
         })),
         segmentIdCounter: s.segmentIdCounter || 0,
         notes: s.notes || '',
-        savedAt: s.savedAt || Date.now()
+        savedAt: s.savedAt || Date.now(),
+        libraryId: s.libraryId || null,
+        collectionIds: Array.isArray(s.collectionIds) ? s.collectionIds : []
       };
     });
 
@@ -2906,6 +3220,19 @@ function importLibraryJSON(file) {
 
     // Merge into existing — add new, skip existing (don't overwrite)
     const existing = await loadSessionsFromStorage();
+    // Bring in any Library/Collection definitions from the backup that aren't
+    // already present locally (matched by id), so imported pieces' libraryId/
+    // collectionIds actually resolve to something visible.
+    if (raw.__libraries__ && typeof raw.__libraries__ === 'object') {
+      Object.keys(raw.__libraries__).forEach(id => {
+        if (!existing.__libraries__[id]) existing.__libraries__[id] = raw.__libraries__[id];
+      });
+    }
+    if (raw.__collections__ && typeof raw.__collections__ === 'object') {
+      Object.keys(raw.__collections__).forEach(id => {
+        if (!existing.__collections__[id]) existing.__collections__[id] = raw.__collections__[id];
+      });
+    }
     let added = 0, skipped = 0;
     names.forEach(name => {
       if (!existing[name]) {
@@ -4437,7 +4764,7 @@ async function _migrateFromLocalStorage() {
   if (statusPanel) statusPanel.style.display = '';
 
   const sessions = await loadSessionsFromStorage();
-  const allKeys = Object.keys(sessions).filter(k => k !== '__order__');
+  const allKeys = Object.keys(sessions).filter(k => !_isMetaKey(k));
   if (!allKeys.length) {
     if (statusContent) statusContent.innerHTML =
       '<span style="color:var(--text-faint)">No localStorage sessions found.</span>';
@@ -5291,7 +5618,7 @@ _loadUniversalNotes();
 _renderCalHistory();
 _initAutoResize('piece-notes');
 _initAutoResize('universal-notes');
-_refreshCategoryDatalist();
+_refreshNewPieceLibrarySelect();
 window.addEventListener('resize', drawOverview);
 
 // Warn before closing if unsaved clips exist
