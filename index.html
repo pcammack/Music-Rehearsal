@@ -423,10 +423,13 @@ input[type=file]{display:none}
   border-bottom:1px solid var(--border);align-items:center}
 .lib-chip-label{font-size:0.34rem;color:var(--text-faint);letter-spacing:0.1em;
   text-transform:uppercase;margin-right:0.15rem;flex-shrink:0}
-.lib-chip{display:inline-flex;align-items:center;gap:0.3rem;background:var(--bg3);
-  border:1px solid var(--border);padding:0.1rem 0.4rem;font-size:0.4rem;
-  color:var(--text-mid)}
-.lib-chip-del{cursor:pointer;color:var(--text-faint);transition:color 0.15s}
+.lib-chip{display:inline-flex;align-items:center;gap:0.35rem;background:var(--bg3);
+  border:1px solid var(--border);padding:0.1rem 0.45rem;font-size:0.4rem;
+  color:var(--text-mid);transition:border-color 0.15s}
+.lib-chip:hover{border-color:var(--border-l)}
+.lib-chip-del{cursor:pointer;color:var(--text-faint);opacity:0.3;
+  padding:0 0.12rem;margin-left:0.05rem;transition:opacity 0.15s,color 0.15s}
+.lib-chip:hover .lib-chip-del{opacity:1}
 .lib-chip-del:hover{color:var(--red)}
 .lib-chip-add-input{background:none;border:1px solid var(--border);color:var(--text);
   font-family:'JetBrains Mono',monospace;font-size:0.4rem;padding:0.1rem 0.3rem;
@@ -442,11 +445,43 @@ input[type=file]{display:none}
   color:var(--text-faint);cursor:pointer;transition:all 0.15s;white-space:nowrap}
 .lib-collection-pill:hover{border-color:var(--border-l);color:var(--text-mid)}
 .lib-collection-pill.active{background:var(--accent);border-color:var(--accent);color:#1a1a1a}
+/* ── COLLECTION DOTS + ADD-POPOVER ON PIECE ROWS ── */
+.lib-collection-dots{display:inline-flex;gap:0.15rem;margin-left:0.35rem;vertical-align:middle}
+.lib-collection-dot{width:0.28rem;height:0.28rem;border-radius:50%;background:var(--accent);
+  cursor:pointer;display:inline-block}
+.lib-collection-picker-wrap{position:relative;display:inline-block;margin-left:0.3rem}
+.lib-collection-add{cursor:pointer;color:var(--text-faint);font-size:0.4rem;
+  padding:0 0.22rem;border:1px dashed var(--border);border-radius:2px;transition:all 0.15s}
+.lib-collection-add:hover{color:var(--text-mid);border-color:var(--border-l)}
+.lib-collection-picker{top:calc(100% + 0.2rem);left:0;right:auto}
 /* collection filter dropdown */
 .lib-filter-select{background:var(--bg3);border:1px solid var(--border);color:var(--text-faint);
   font-family:'JetBrains Mono',monospace;font-size:0.38rem;padding:0.08rem 0.3rem;
   cursor:pointer;outline:none;transition:all 0.15s}
 .lib-filter-select:hover{border-color:var(--border-l);color:var(--text-mid)}
+/* ── CONSOLIDATED BACKUP / ADVANCED DROPDOWNS ── */
+.hdr-menu-wrap{position:relative;display:flex;align-items:center;gap:0.3rem}
+.hdr-menu-btn{background:none;border:1px solid var(--border);color:var(--text-faint);
+  font-family:'JetBrains Mono',monospace;font-size:0.42rem;padding:0.22rem 0.5rem;
+  cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:0.25rem}
+.hdr-menu-btn:hover{border-color:var(--border-l);color:var(--text-mid)}
+.hdr-more-btn{width:1.6rem;height:1.6rem;justify-content:center;padding:0}
+.hdr-dropdown{display:none;position:absolute;top:calc(100% + 0.25rem);right:0;
+  background:var(--bg3);border:1px solid var(--border-l);z-index:5;min-width:150px;
+  padding:0.2rem;box-shadow:0 4px 12px rgba(0,0,0,0.4)}
+.hdr-dropdown.open{display:block}
+.hdr-dropdown-item{display:block;width:100%;text-align:left;background:none;border:none;
+  color:var(--text-mid);font-family:'JetBrains Mono',monospace;font-size:0.42rem;
+  padding:0.35rem 0.5rem;cursor:pointer;transition:background 0.1s}
+.hdr-dropdown-item:hover{background:var(--bg4);color:var(--text)}
+.hdr-dropdown-label{font-size:0.34rem;color:var(--text-faint);letter-spacing:0.1em;
+  text-transform:uppercase;padding:0.3rem 0.5rem 0.15rem}
+.hdr-folder-inline{padding:0.35rem 0.5rem;font-size:0.4rem;color:var(--text-faint);
+  border-top:1px solid var(--border);margin-top:0.15rem}
+.hdr-folder-inline strong{color:var(--text-mid)}
+.lib-manage-toggle{font-size:0.4rem;color:var(--text-faint);cursor:pointer;
+  padding:0.3rem 0.5rem;border-bottom:1px solid var(--border);transition:color 0.15s}
+.lib-manage-toggle:hover{color:var(--text-mid)}
 /* ── PASSAGE QUEUE ── */
 .queue-btn-bar{display:flex;align-items:center;gap:0.5rem;padding:0.25rem 0.1rem;margin-bottom:0.2rem;flex-wrap:wrap}
 .queue-play-btn{background:var(--green);border:1px solid var(--green);color:#fff;font-family:'JetBrains Mono',monospace;font-size:0.42rem;padding:0.1rem 0.5rem;cursor:pointer;letter-spacing:0.05em;transition:all 0.15s}
@@ -618,7 +653,7 @@ input[type=file]{display:none}
 <header>
   <div style="display:flex;align-items:center">
     <span class="app-name">Rehearsal Space</span>
-    <span class="app-ver">v8.1</span>
+    <span class="app-ver">v8.5</span>
   </div>
 </header>
 
@@ -889,44 +924,36 @@ input[type=file]{display:none}
         <button class="btn-sm primary" id="auth-banner-btn" onclick="authBannerAction()"></button>
       </div>
     </div>
-    <!-- Folder connection banner -->
-    <div id="folder-banner" class="folder-banner" style="display:none">
-      <span class="folder-banner-msg" id="folder-banner-msg"></span>
-      <div class="folder-banner-actions">
-        <button class="btn-sm primary" id="folder-banner-btn" onclick="folderBannerAction()"></button>
-        <button class="btn-sm" onclick="changeFolder()" title="Choose a different folder" id="folder-change-btn" style="display:none">Change</button>
-      </div>
-    </div>
     <div class="library-hdr">
       <span class="library-title">Repertoire</span>
-      <div class="library-actions">
-        <button class="btn-sm" onclick="exportLibraryJSON()" title="Export full library (all pieces) to a dated JSON backup file">↓ Export library</button>
-        <label style="display:inline-block">
-          <span class="btn-sm" style="display:inline-block;cursor:pointer" title="Import a library backup JSON — adds pieces not already present, skips duplicates">↑ Import library</span>
-          <input type="file" id="import-json-input" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" onchange="importLibraryJSON(this.files[0])">
-        </label>
+      <div class="hdr-menu-wrap">
+        <button class="hdr-menu-btn" id="tools-menu-btn" onclick="toggleHdrMenu('tools')" title="Backup and advanced options">⋯</button>
+        <div class="hdr-dropdown" id="tools-menu">
+          <button class="hdr-dropdown-item" onclick="exportLibraryJSON();closeHdrMenus()">↓ Download backup</button>
+          <label class="hdr-dropdown-item" style="cursor:pointer" for="import-json-input">↑ Restore from file</label>
+          <input type="file" id="import-json-input" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" onchange="importLibraryJSON(this.files[0]);closeHdrMenus()">
+          <div class="hdr-dropdown-label" id="cloud-sync-label" style="display:none">Cloud (Phase 3 — testing)</div>
+          <button class="hdr-dropdown-item" id="cloud-sync-btn" onclick="syncPieceToCloudUI()" style="display:none"></button>
+          <div class="hdr-dropdown-label">Advanced</div>
+          <label class="hdr-dropdown-item" style="cursor:pointer" for="piece-txt-input">↑ Load notes from .txt</label>
+          <input type="file" id="piece-txt-input" accept=".txt,text/plain" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" onchange="manualLoadPieceTxt(this.files[0]);closeHdrMenus()">
+          <button class="hdr-dropdown-item" onclick="folderBannerAction();closeHdrMenus()" id="folder-menu-action">Connect local folder</button>
+          <div class="hdr-folder-inline" id="folder-status-inline" style="display:none"></div>
+        </div>
       </div>
-    </div>
-    <!-- Piece-data backup / recovery row -->
-    <div style="display:flex;gap:0.35rem;flex-wrap:wrap;padding:0.3rem 0.5rem;border-bottom:1px solid var(--border);align-items:center">
-      <span style="font-size:0.48rem;color:var(--text-faint);flex:0 0 auto;letter-spacing:0.06em">Current piece:</span>
-      <button class="btn-sm" onclick="saveSessionToStorage()" title="Force-save the current piece to localStorage now (autosave normally handles this)">↓ Save now</button>
-      <button class="btn-sm" onclick="manualSavePieceData()" title="Export current piece markers + passages + notes to a JSON file for backup or transfer">↓ Backup piece</button>
-      <label style="display:inline-block;flex:0 0 auto">
-        <span class="btn-sm" style="display:inline-block;cursor:pointer" title="Restore piece markers + passages + notes from a backup JSON file">↑ Restore piece</span>
-        <input type="file" id="piece-json-input" accept=".json" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" onchange="manualLoadPieceJSON(this.files[0])">
-      </label>
-      <label style="display:inline-block;flex:0 0 auto">
-        <span class="btn-sm" style="display:inline-block;cursor:pointer" title="Load piece notes from a plain text (.txt) file">↑ Notes .txt</span>
-        <input type="file" id="piece-txt-input" accept=".txt,text/plain" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" onchange="manualLoadPieceTxt(this.files[0])">
-      </label>
     </div>
     <!-- Import feedback -->
     <div class="import-notice" id="import-notice"></div>
-    <!-- Library manager: permanent, one-per-piece, renameable groupings -->
-    <div class="lib-chip-row" id="library-manager"></div>
-    <!-- Collection manager: flexible, non-exclusive, temporary groupings -->
-    <div class="lib-chip-row" id="collection-manager"></div>
+    <!-- Library/Collection management — tucked behind a deliberate toggle,
+         since adding/renaming/deleting a library or collection is a rare
+         action, not something that needs to sit visible during normal use -->
+    <div class="lib-manage-toggle" id="lib-manage-toggle" onclick="toggleLibManagePanel()">⚙ Manage libraries &amp; collections</div>
+    <div id="lib-manage-panel" style="display:none">
+      <!-- Library manager: permanent, one-per-piece, renameable groupings -->
+      <div class="lib-chip-row" id="library-manager"></div>
+      <!-- Collection manager: flexible, non-exclusive, temporary groupings -->
+      <div class="lib-chip-row" id="collection-manager"></div>
+    </div>
     <div class="lib-sort-bar">
       <span class="lib-sort-label">Sort:</span>
       <button class="lib-sort-btn active" id="lib-sort-alpha" onclick="setLibSort('alpha')">A–Z</button>
@@ -953,7 +980,22 @@ input[type=file]{display:none}
       <span>Documentation</span><span id="docs-arrow">▸</span>
     </button>
     <div class="collapsible-body" id="docs-body">
-      <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v8.1</span>
+      <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v8.5</span>
+
+      <div class="doc-h">WHAT'S NEW IN v8.5</div>
+      · <strong style="color:var(--text)">Cloud sync — Phase 3, one piece at a time:</strong> New "☁ Sync [piece] to cloud" item in the ⋯ menu (only visible once signed in). Writes the currently-open piece's markers/segments/notes/library/collection data to Firestore, plus its audio to Storage if a real file is attached this session. Deliberately scoped to whichever single piece you trigger it on — per the phased plan, this gets stress-tested on one real piece before any bulk or automatic sync exists. localStorage is untouched either way; this only adds a cloud copy alongside it.<br>
+
+      <div class="doc-h">WHAT'S NEW IN v8.4</div>
+      · <strong style="color:var(--text)">Piece rows redesigned (color-coded library, dot-style collections):</strong> Each piece's library select is now color-coded — a stable color per library, so you can tell a piece's library at a glance without reading it. Collection membership is now small dots instead of full-text pills; a "+" reveals a compact picker to add/remove membership.<br>
+      · <strong style="color:var(--text)">Library/Collection management tucked behind a toggle:</strong> Adding, renaming, or deleting a library or collection is rare — it no longer sits visible in the main view. Click "⚙ Manage libraries & collections" to reveal it when you actually need it.<br>
+
+      <div class="doc-h">WHAT'S NEW IN v8.3</div>
+      · <strong style="color:var(--text)">Auto-assign now runs automatically on import:</strong> No more manual click needed — importing a backup immediately sorts any known piece name into its library, reported right in the import notice (e.g. "15 pieces imported · 15 auto-sorted into libraries"). The manual "auto-assign known pieces" link stays available for edge cases (pieces added by hand that happen to match a known name).<br>
+      · <strong style="color:var(--text)">Library delete button softened:</strong> The "×" on library/collection chips now fades to near-invisible until you hover the chip, rather than sitting permanently visible next to the name. Worth noting: it was never a true one-click delete — a confirmation dialog (showing the library name and exactly how many pieces would be affected) has always gated it — this fixes how it *looked*, not the underlying safety, which was already there.<br>
+      · <strong style="color:var(--text)">Backup and Advanced menus merged into one:</strong> The two small dropdown buttons from v8.2 are now a single "⋯" menu — Download backup / Restore from file, then an Advanced section with folder-sync and notes .txt import.<br>
+
+      <div class="doc-h">WHAT'S NEW IN v8.2</div>
+      · <strong style="color:var(--text)">Top bar decluttered:</strong> The always-visible Export/Import/Save now/Backup piece/Restore piece/Notes .txt/folder-connect row (7 controls) is now a single "↓ Backup ▾" dropdown (download/restore your whole library) plus a "⋯" Advanced menu (folder-sync, notes .txt import). <strong style="color:var(--text)">Removed entirely:</strong> "Save now" (redundant — autosave already runs on every change) and per-piece "Backup piece"/"Restore piece" (redundant with whole-library Backup). Folder-sync stays functional in the Advanced menu for now; worth revisiting once real cloud sync (Phase 3) exists, since it was solving the same problem cloud sync is meant to replace.<br>
 
       <div class="doc-h">WHAT'S NEW IN v8.1</div>
       · <strong style="color:var(--text)">Auto-assign known pieces:</strong> New link next to the Libraries chips. Importing an older, pre-Libraries backup (e.g. a plain export from before v7.6) lands its pieces in Uncategorised, since the automatic name-match only runs once, the very first time a library registry is created. This re-applies that same matching on demand — safe to run repeatedly, never overrides a piece that already has a library set.<br>
@@ -1040,6 +1082,10 @@ let audioBuffer    = null;  // decoded buffer for waveform only
 let audioContext   = null;  // AudioContext for waveform decoding only
 let audioEl        = null;  // HTMLAudioElement for playback (pitch-corrected)
 let audioObjectURL = null;  // object URL for current file
+let currentAudioFile = null; // raw File object for the currently-attached audio,
+                              // kept only for this session — the app never
+                              // persists audio bytes itself. Used by cloud sync
+                              // to upload whatever's actually attached right now.
 let playGen        = 0;
 let isPlaying      = false;
 let playOffset     = 0;
@@ -1103,6 +1149,17 @@ function _isMetaKey(k) { return META_KEYS.includes(k); }
 
 function _newId(prefix) {
   return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+// Stable color per library, so a library's color doesn't shift as other
+// libraries are added/removed — hashed from its id (constant for its life),
+// not its position in a sorted list.
+const LIB_COLOR_PALETTE = ['#4a7ec4','#c4922a','#4a9e6a','#c45a4a','#9a6ac4','#4ac4b0','#c46a9a','#8a9e4a'];
+function _libColor(libId) {
+  if (!libId) return '#5a5550'; // Uncategorised — neutral
+  let hash = 0;
+  for (let i = 0; i < libId.length; i++) hash = (hash * 31 + libId.charCodeAt(i)) >>> 0;
+  return LIB_COLOR_PALETTE[hash % LIB_COLOR_PALETTE.length];
 }
 
 // Known real-piece → library name mapping, used only for the one-time
@@ -1309,17 +1366,13 @@ function setCollectionFilter(id) {
 
 // ── Manager strip renderers (library chips / collection chips) ──
 
-// One-off convenience: assigns any currently-Uncategorised piece into its
-// known library by matching piece name against the same lookup table used
-// during first-time migration. Needed because that automatic name-match
-// only runs once, the very first time a library registry is created — so
-// importing an older, pre-Libraries backup (e.g. a plain export from before
-// this feature existed) into an already-initialized library leaves those
-// pieces Uncategorised instead of auto-sorting. This re-applies the same
-// matching on demand, safe to run repeatedly (never overrides a piece that
-// already has a library set).
-async function autoAssignKnownLibraries() {
-  const sessions = await loadSessionsFromStorage();
+// Pure helper: mutates `sessions` in place, assigning any currently-
+// Uncategorised piece into its known library by matching piece name against
+// the same lookup table used during first-time migration. Never overrides
+// a piece that already has a library set. Returns the count assigned.
+// Used automatically after every import, and available as a manual re-run
+// via the "auto-assign known pieces" link for edge cases.
+function _autoAssignByName(sessions) {
   const libsByName = {};
   Object.values(sessions.__libraries__ || {}).forEach(l => { libsByName[l.name] = l.id; });
   let count = 0;
@@ -1332,6 +1385,14 @@ async function autoAssignKnownLibraries() {
       count++;
     }
   });
+  return count;
+}
+
+// Manual re-run, for cases outside the normal import flow (e.g. pieces
+// added by hand that happen to match a known name).
+async function autoAssignKnownLibraries() {
+  const sessions = await loadSessionsFromStorage();
+  const count = _autoAssignByName(sessions);
   await saveSessionsToStorage(sessions);
   renderSessionsList();
   alert(count
@@ -1437,6 +1498,88 @@ function toggleSection(id) {
   arrow.textContent = open ? '▸' : '▾';
 }
 
+// ── Header dropdown menu: single consolidated ⋯ menu ──
+function toggleHdrMenu(which) {
+  const target = document.getElementById('tools-menu');
+  _updateCloudSyncMenuItem();
+  target.classList.toggle('open');
+}
+function closeHdrMenus() {
+  document.getElementById('tools-menu')?.classList.remove('open');
+}
+// Cloud sync menu item — only meaningful once signed in (Phase 3, testing).
+// Reflects sign-in state (set by the Firebase module script) and whether a
+// piece is currently open, since syncing needs both.
+function _updateCloudSyncMenuItem() {
+  const label = document.getElementById('cloud-sync-label');
+  const btn = document.getElementById('cloud-sync-btn');
+  if (!label || !btn) return;
+  const user = (typeof window.getCloudUser === 'function') ? window.getCloudUser() : null;
+  if (!user) { label.style.display = 'none'; btn.style.display = 'none'; return; }
+  label.style.display = ''; btn.style.display = '';
+  if (currentPieceName) {
+    btn.textContent = `☁ Sync "${currentPieceName}" to cloud`;
+    btn.disabled = false;
+    btn.style.opacity = '';
+  } else {
+    btn.textContent = '☁ Open a piece to sync';
+    btn.disabled = true;
+    btn.style.opacity = '0.4';
+  }
+}
+// Assembles the current piece's full data and hands it to the Firebase
+// module script for the actual Firestore/Storage write. Audio only uploads
+// if a real file is attached this session (currentAudioFile) — see the
+// note by its declaration for why the app can't rely on it otherwise.
+async function syncPieceToCloudUI() {
+  closeHdrMenus();
+  if (typeof window.cloudSyncCurrentPiece !== 'function') {
+    alert('Cloud sync is still loading — try again in a moment.');
+    return;
+  }
+  if (!currentPieceName) { alert('Open a piece first, then sync it.'); return; }
+  const sessions = await loadSessionsFromStorage();
+  const s = sessions[currentPieceName];
+  if (!s) { alert("Could not find this piece's saved data."); return; }
+  const pieceData = {
+    pieceName: currentPieceName,
+    audioFileName: s.audioFileName || audioFileName || '',
+    audioDuration: s.audioDuration || audioDuration || 0,
+    markers: s.markers || markers || [],
+    markerIdCounter: s.markerIdCounter || markerIdCounter || 0,
+    segments: s.segments || segments || [],
+    segmentIdCounter: s.segmentIdCounter || segmentIdCounter || 0,
+    notes: document.getElementById('piece-notes')?.value ?? (s.notes || ''),
+    competence: s.competence || null,
+    targetDate: s.targetDate || null,
+    libraryId: s.libraryId || null,
+    collectionIds: Array.isArray(s.collectionIds) ? s.collectionIds : [],
+    savedAt: Date.now()
+  };
+  await window.cloudSyncCurrentPiece(currentPieceName, pieceData, currentAudioFile,
+    sessions.__libraries__ || {}, sessions.__collections__ || {});
+}
+function toggleCollectionPicker(pickerId) {
+  const el = document.getElementById(pickerId);
+  if (!el) return;
+  const isOpen = el.classList.contains('open');
+  document.querySelectorAll('.lib-collection-picker.open').forEach(p => p.classList.remove('open'));
+  if (!isOpen) el.classList.add('open');
+}
+function toggleLibManagePanel() {
+  const panel = document.getElementById('lib-manage-panel');
+  const toggle = document.getElementById('lib-manage-toggle');
+  const open = panel.style.display !== 'none';
+  panel.style.display = open ? 'none' : '';
+  toggle.textContent = open ? '⚙ Manage libraries & collections' : '⚙ Hide libraries & collections';
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.hdr-menu-wrap')) closeHdrMenus();
+  if (!e.target.closest('.lib-collection-picker-wrap')) {
+    document.querySelectorAll('.lib-collection-picker.open').forEach(p => p.classList.remove('open'));
+  }
+});
+
 // ══════════════════════════════════════════════
 // AUDIO FILE LOADING
 // ══════════════════════════════════════════════
@@ -1460,11 +1603,13 @@ function _updatePieceTitle() {
     el.textContent = 'Select a piece from the library';
     el.classList.add('empty');
   }
+  _updateCloudSyncMenuItem();
 }
 
 function onAudioFile(file) {
   if (!file) return;
   audioFileName = file.name;
+  currentAudioFile = file;
   _updateNoFileNotice();
 
   // Revoke previous object URL
@@ -2732,26 +2877,6 @@ async function saveSessionsToStorage(sessions) {
   try { localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(sessions)); } catch(e) {}
 }
 
-async function saveSessionToStorage() {
-  const def = currentPieceName || audioFileName || 'Untitled';
-  const name = prompt('Save piece as:', def);
-  if (!name||!name.trim()) return;
-  const trimmed = name.trim();
-  const sessions = await loadSessionsFromStorage();
-  sessions[trimmed] = {
-    pieceName: currentPieceName,
-    audioFileName, audioDuration, markers, markerIdCounter,
-    segments, segmentIdCounter,
-    notes: document.getElementById('piece-notes').value,
-    savedAt: Date.now()
-  };
-  const order = sessions.__order__ || Object.keys(sessions).filter(k=>!_isMetaKey(k));
-  if (!order.includes(trimmed)) order.push(trimmed);
-  sessions.__order__ = order;
-  await saveSessionsToStorage(sessions);
-  renderSessionsList();
-}
-
 // ── Add a new piece ──
 let _pendingNewPieceName = null;
 
@@ -2825,6 +2950,7 @@ async function loadNamedSession(name) {
   if (audioObjectURL) { URL.revokeObjectURL(audioObjectURL); audioObjectURL = null; }
   audioBuffer = null; audioDuration = 0; activeLoopId = null; previewingSegId = null;
   activeMarkerIdx = -1; quickLoopStartId = null;
+  currentAudioFile = null;
   loopStart = null; loopEnd = null;
   document.getElementById('audio-player').style.display = 'none';
   playOffset = 0; queuePoint = 0; _updateDisplay(0);
@@ -2979,28 +3105,42 @@ function _renderPieceRow(name, s, sessions) {
       onchange="event.stopPropagation();_hideDateInput('${safeJs}',this.value)"
       onblur="event.stopPropagation();_hideDateInput('${safeJs}',this.value)">`;
   // Library select — sourced from the __libraries__ registry (id-referenced,
-  // so renaming a library never desyncs this dropdown)
+  // so renaming a library never desyncs this dropdown). Color-coded per
+  // library so you can tell a piece's library at a glance without reading it.
   const libraries = sessions.__libraries__ || {};
   const libList = Object.values(libraries).sort((a,b)=>a.name.localeCompare(b.name));
   const libOptions = ['<option value="">— uncategorised —</option>',
     ...libList.map(l=>`<option value="${l.id}"${s.libraryId===l.id?' selected':''}>${escHtml(l.name)}</option>`)
   ].join('');
+  const libColor = _libColor(s.libraryId);
   const libSelect = `<select class="lib-cat-select"
+    style="border-color:${libColor};color:${libColor};background:${libColor}1a"
     onclick="event.stopPropagation()"
     onchange="event.stopPropagation();setPieceLibrary('${safeJs}',this.value)"
     title="Library">${libOptions}</select>`;
-  // Collection pills — non-exclusive, click to toggle membership
+  // Collection membership — small dots rather than full-text pills, since
+  // collections are secondary/temporary tags, not the primary identity a
+  // library is. Hover a dot to see which collection it represents. A small
+  // "+" reveals a compact picker to add/remove membership.
   const collections = sessions.__collections__ || {};
   const activeCollections = Object.values(collections).filter(c=>!c.archived).sort((a,b)=>a.name.localeCompare(b.name));
   const pieceCollectionIds = Array.isArray(s.collectionIds) ? s.collectionIds : [];
-  const collectionPillsHtml = activeCollections.length ? `<div class="lib-collection-pills">
-      ${activeCollections.map(c => {
-        const on = pieceCollectionIds.includes(c.id);
-        return `<span class="lib-collection-pill${on?' active':''}"
-          onclick="event.stopPropagation();togglePieceCollection('${safeJs}','${c.id}')"
-          title="${on?'In collection '+escHtml(c.name)+' — click to remove':'Add to collection '+escHtml(c.name)}">${escHtml(c.name)}</span>`;
-      }).join('')}
-    </div>` : '';
+  const inCollections = activeCollections.filter(c => pieceCollectionIds.includes(c.id));
+  const pickerId = `col-picker-${safeId}`;
+  const collectionDotsHtml = inCollections.length ? `<span class="lib-collection-dots">
+      ${inCollections.map(c => `<span class="lib-collection-dot"
+        onclick="event.stopPropagation();togglePieceCollection('${safeJs}','${c.id}')"
+        title="In collection: ${escHtml(c.name)} — click to remove"></span>`).join('')}
+    </span>` : '';
+  const collectionAddHtml = activeCollections.length ? `<span class="lib-collection-picker-wrap">
+      <span class="lib-collection-add" onclick="event.stopPropagation();toggleCollectionPicker('${pickerId}')" title="Add to a collection">+</span>
+      <div class="hdr-dropdown lib-collection-picker" id="${pickerId}">
+        ${activeCollections.map(c => {
+          const on = pieceCollectionIds.includes(c.id);
+          return `<button class="hdr-dropdown-item" onclick="event.stopPropagation();togglePieceCollection('${safeJs}','${c.id}')">${on?'✓ ':''}${escHtml(c.name)}</button>`;
+        }).join('')}
+      </div>
+    </span>` : '';
   return `<div class="lib-row${isActive?' active':''}"
       data-name="${safe}" draggable="true"
       onclick="loadNamedSession('${safeJs}')"
@@ -3016,7 +3156,7 @@ function _renderPieceRow(name, s, sessions) {
           title="Double-click to rename">${safe}</span>
       </span>
       <span class="lib-meta">${mc} mark${mc!==1?'s':''} · ${sc} passage${sc!==1?'s':''} ${statusHtml}</span>
-      ${collectionPillsHtml}
+      ${collectionDotsHtml}${collectionAddHtml}
     </div>
     <div class="lib-row-right" style="gap:0.3rem">
       ${libSelect}
@@ -3289,101 +3429,25 @@ function importLibraryJSON(file) {
       } else { skipped++; }
     });
 
+    // Auto-sort any newly-added, still-Uncategorised piece into its known
+    // library by name — no manual click needed for a known catalog.
+    const assigned = _autoAssignByName(existing);
+
     await saveSessionsToStorage(existing);
     await renderSessionsList();
 
     // Show feedback in the import-notice element
     const notice = document.getElementById('import-notice');
     if (notice) {
-      notice.textContent = `✓ ${added} piece${added!==1?'s':''} imported${skipped ? ` · ${skipped} already existed` : ''}`;
+      notice.textContent = `✓ ${added} piece${added!==1?'s':''} imported` +
+        (assigned ? ` · ${assigned} auto-sorted into libraries` : '') +
+        (skipped ? ` · ${skipped} already existed` : '');
       notice.classList.add('visible');
       setTimeout(() => notice.classList.remove('visible'), 5000);
     }
   };
   reader.readAsText(file);
   document.getElementById('import-json-input').value = '';
-}
-
-// ── Manual piece data: save current piece to JSON ──
-function manualSavePieceData() {
-  if (!currentPieceName) { alert('No piece is currently loaded.'); return; }
-  const pieceData = {
-    version: 'rs_piece_v1',
-    savedAt: Date.now(),
-    pieceName: currentPieceName,
-    audioFileName,
-    audioDuration,
-    markers,
-    markerIdCounter,
-    segments,
-    segmentIdCounter,
-    notes: document.getElementById('piece-notes')?.value || ''
-  };
-  const blob = new Blob([JSON.stringify(pieceData, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  const safeName = currentPieceName.replace(/[^\\w-]/g, '_').slice(0, 40);
-  a.download = `${safeName}-${new Date().toISOString().slice(0, 10)}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-// ── Manual piece data: load markers + notes from a saved piece JSON ──
-function manualLoadPieceJSON(file) {
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = async ev => {
-    let data;
-    try { data = JSON.parse(ev.target.result); }
-    catch(e) { alert('Could not parse file — check it is a valid piece JSON.'); return; }
-
-    if (!data || !Array.isArray(data.markers)) {
-      alert('Load failed: does not look like a piece data file (no markers array).'); return; }
-
-    const targetName = data.pieceName || currentPieceName;
-    if (!targetName) { alert('No piece is loaded and the file has no piece name.'); return; }
-
-    const confirmMsg = currentPieceName && currentPieceName !== targetName
-      ? `This file is for "${targetName}" but the current piece is "${currentPieceName}".\nLoad anyway and overwrite current piece data?`
-      : `Replace all markers, passages and notes for "${targetName}" with the file data?`;
-    if (!confirm(confirmMsg)) return;
-
-    // Apply data to in-memory state
-    markers = (data.markers || []).map(m => ({
-      id: m.id ?? 0, label: m.label || '.', type: m.type || 'R',
-      time: m.time || 0, locked: !!m.locked,
-      snappedTo: m.snappedTo || null,
-      annotation: m.annotation || null
-    }));
-    markerIdCounter = Math.max(data.markerIdCounter || 0, ...(markers.length ? markers.map(m => m.id + 1) : [0]));
-    segments = _migrateStatusLabels((data.segments || []).map(seg => ({
-      id: seg.id ?? 0, startId: seg.startId, endId: seg.endId,
-      name: seg.name || '', note: seg.note || '', include: seg.include !== false,
-      starred: !!seg.starred, status: seg.status || null
-    })));
-    segmentIdCounter = Math.max(data.segmentIdCounter || 0, ...(segments.length ? segments.map(s => s.id + 1) : [0]));
-    if (data.notes !== undefined) {
-      const notesEl = document.getElementById('piece-notes');
-      if (notesEl) notesEl.value = data.notes;
-    }
-    if (!currentPieceName && targetName) {
-      currentPieceName = targetName;
-      _updatePieceTitle();
-    }
-
-    renderMarkers(); drawOverview(); renderSegments(); refreshSegmentDropdowns();
-    saveSession();
-
-    const notice = document.getElementById('import-notice');
-    if (notice) {
-      notice.textContent = `✓ Piece data loaded from file (${markers.length} marks, ${segments.length} passages)`;
-      notice.classList.add('visible');
-      setTimeout(() => notice.classList.remove('visible'), 5000);
-    }
-  };
-  reader.readAsText(file);
-  document.getElementById('piece-json-input').value = '';
 }
 
 // ── Manual piece data: load notes from a plain text file ──
@@ -4669,32 +4733,35 @@ async function _initFolderAccess() {
 }
 
 function _showFolderBanner(state) {
-  const banner  = document.getElementById('folder-banner');
-  const msg     = document.getElementById('folder-banner-msg');
-  const btn     = document.getElementById('folder-banner-btn');
-  const chgBtn  = document.getElementById('folder-change-btn');
-  if (!banner) return;
-  banner.style.display = '';
-  banner.className = 'folder-banner';
-  chgBtn.style.display = 'none';
+  const actionBtn = document.getElementById('folder-menu-action');
+  const statusEl  = document.getElementById('folder-status-inline');
+  if (!actionBtn || !statusEl) return;
+  // Remove any previously-added "Change folder" item so it isn't duplicated
+  const existingChange = document.getElementById('folder-change-item');
+  if (existingChange) existingChange.remove();
   if (state === 'unconnected') {
-    msg.innerHTML = 'Connect a <strong>Rehearsal Space</strong> folder to enable organised saving';
-    btn.textContent = 'Connect folder';
-    btn.style.display = '';
+    actionBtn.textContent = 'Connect local folder';
+    actionBtn.style.display = '';
+    statusEl.style.display = 'none';
   } else if (state === 'needs-reconnect') {
-    banner.classList.add('needs-reconnect');
-    msg.innerHTML = `Reconnect <strong>${escHtml(rsFolderName||'Rehearsal Space')}</strong> to resume file saving`;
-    btn.textContent = 'Reconnect';
-    btn.style.display = '';
-    chgBtn.style.display = '';
+    actionBtn.textContent = 'Reconnect local folder';
+    actionBtn.style.display = '';
+    statusEl.style.display = '';
+    statusEl.innerHTML = `Was connected to <strong>${escHtml(rsFolderName||'Rehearsal Space')}</strong> — reconnect to resume`;
   } else if (state === 'connected') {
-    banner.classList.add('connected');
-    msg.innerHTML = `<strong>✓ ${escHtml(rsFolderName||'Rehearsal Space')}</strong> connected`;
-    btn.style.display = 'none';
-    chgBtn.style.display = '';
+    actionBtn.style.display = 'none';
+    statusEl.style.display = '';
+    statusEl.innerHTML = `<strong>✓ ${escHtml(rsFolderName||'Rehearsal Space')}</strong> connected`;
+    const changeItem = document.createElement('button');
+    changeItem.className = 'hdr-dropdown-item';
+    changeItem.id = 'folder-change-item';
+    changeItem.textContent = 'Change local folder';
+    changeItem.onclick = () => { changeFolder(); closeHdrMenus(); };
+    statusEl.insertAdjacentElement('beforebegin', changeItem);
   } else if (state === 'unsupported') {
-    msg.innerHTML = 'Folder saving requires Chrome or Edge. Using browser downloads.';
-    btn.style.display = 'none';
+    actionBtn.style.display = 'none';
+    statusEl.style.display = '';
+    statusEl.textContent = 'Folder saving requires Chrome or Edge — using browser downloads instead';
   }
 }
 
@@ -5689,6 +5756,12 @@ window.addEventListener('beforeunload', e => {
   import {
     getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
   } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+  import {
+    getFirestore, doc, setDoc
+  } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
+  import {
+    getStorage, ref, uploadBytes
+  } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-storage.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyCUyXe-JszYsbY1XJ8bhjtdHhrajIcHFDA",
@@ -5702,8 +5775,15 @@ window.addEventListener('beforeunload', e => {
   const firebaseApp = initializeApp(firebaseConfig);
   const auth = getAuth(firebaseApp);
   const googleProvider = new GoogleAuthProvider();
+  const db = getFirestore(firebaseApp);
+  const storage = getStorage(firebaseApp);
 
   let currentUser = null;
+
+  // Exposed so the main (non-module) script's menu-state logic can check
+  // sign-in status — module scripts have their own scope and can't see
+  // each other's plain `let`/`const` bindings, only what's put on window.
+  window.getCloudUser = () => currentUser;
 
   function _renderAuthBanner() {
     const banner = document.getElementById('auth-banner');
@@ -5744,6 +5824,59 @@ window.addEventListener('beforeunload', e => {
     currentUser = user;
     _renderAuthBanner();
   });
+
+  // ══════════════════════════════════════════════
+  // PHASE 3 (testing): sync ONE piece at a time to Firestore + Storage
+  // ══════════════════════════════════════════════
+  // Deliberately scoped to whichever single piece the person triggers this
+  // on — per the memo's phased plan, this gets stress-tested on one real
+  // piece before any bulk/automatic sync of the rest of the library exists.
+  // Data shape: users/{uid}/pieces/{pieceId} holds the same fields already
+  // used locally (markers, segments, notes, libraryId, collectionIds, etc).
+  // users/{uid}/meta/libraries and .../meta/collections carry the registries
+  // so libraryId/collectionIds resolve to something meaningful if this is
+  // ever read from a different device. Audio uploads to Storage only if a
+  // real file is attached this session — see currentAudioFile's declaration
+  // in the main script for why that's the only moment its bytes exist.
+  function _slugifyPieceId(name) {
+    return name.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 120) || 'piece';
+  }
+
+  window.cloudSyncCurrentPiece = async function(pieceName, pieceData, audioFile, libraries, collections) {
+    if (!currentUser) { alert('Sign in with Google first, then sync.'); return; }
+    const notice = document.getElementById('import-notice');
+    const showNotice = (text) => {
+      if (!notice) return;
+      notice.textContent = text;
+      notice.classList.add('visible');
+      setTimeout(() => notice.classList.remove('visible'), 7000);
+    };
+    const pieceId = _slugifyPieceId(pieceName);
+    try {
+      let audioStoragePath = null;
+      if (audioFile) {
+        const storagePath = `users/${currentUser.uid}/audio/${pieceId}`;
+        await uploadBytes(ref(storage, storagePath), audioFile);
+        audioStoragePath = storagePath;
+      }
+      await setDoc(doc(db, 'users', currentUser.uid, 'pieces', pieceId), {
+        ...pieceData,
+        audioStoragePath,
+        syncedAt: Date.now()
+      }, { merge: true });
+      await setDoc(doc(db, 'users', currentUser.uid, 'meta', 'libraries'),
+        { libraries: libraries || {} }, { merge: true });
+      await setDoc(doc(db, 'users', currentUser.uid, 'meta', 'collections'),
+        { collections: collections || {} }, { merge: true });
+
+      showNotice(audioFile
+        ? `☁ Synced "${pieceName}" to cloud, including audio`
+        : `☁ Synced "${pieceName}" data to cloud — no audio attached this session, reattach the file and sync again to include it`);
+    } catch(e) {
+      console.error('Cloud sync failed:', e);
+      alert('Cloud sync failed: ' + e.message + '\n\nCheck the browser console for details.');
+    }
+  };
 
   // Render once immediately so the banner isn't blank before the first
   // auth-state callback fires (which can take a moment on first load).
