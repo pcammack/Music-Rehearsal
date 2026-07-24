@@ -618,7 +618,7 @@ input[type=file]{display:none}
 <header>
   <div style="display:flex;align-items:center">
     <span class="app-name">Rehearsal Space</span>
-    <span class="app-ver">v8.0</span>
+    <span class="app-ver">v8.1</span>
   </div>
 </header>
 
@@ -953,7 +953,10 @@ input[type=file]{display:none}
       <span>Documentation</span><span id="docs-arrow">▸</span>
     </button>
     <div class="collapsible-body" id="docs-body">
-      <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v8.0</span>
+      <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v8.1</span>
+
+      <div class="doc-h">WHAT'S NEW IN v8.1</div>
+      · <strong style="color:var(--text)">Auto-assign known pieces:</strong> New link next to the Libraries chips. Importing an older, pre-Libraries backup (e.g. a plain export from before v7.6) lands its pieces in Uncategorised, since the automatic name-match only runs once, the very first time a library registry is created. This re-applies that same matching on demand — safe to run repeatedly, never overrides a piece that already has a library set.<br>
 
       <div class="doc-h">WHAT'S NEW IN v8.0</div>
       · <strong style="color:var(--text)">Google sign-in added (Firebase Phase 2):</strong> A sign-in banner now appears above the library panel, wired to the real <code>rehearsal-space-f1642</code> Firebase project. This is auth only — signing in has no effect on your pieces yet; everything still saves to localStorage exactly as before. First version marked with a major bump rather than another v7.x tick, since this is the first release where the app has any online capability at all (versus purely local iteration through v7.x). Data migration to Firestore/Storage is a separate, later step (Phase 3).<br>
@@ -1305,6 +1308,37 @@ function setCollectionFilter(id) {
 }
 
 // ── Manager strip renderers (library chips / collection chips) ──
+
+// One-off convenience: assigns any currently-Uncategorised piece into its
+// known library by matching piece name against the same lookup table used
+// during first-time migration. Needed because that automatic name-match
+// only runs once, the very first time a library registry is created — so
+// importing an older, pre-Libraries backup (e.g. a plain export from before
+// this feature existed) into an already-initialized library leaves those
+// pieces Uncategorised instead of auto-sorting. This re-applies the same
+// matching on demand, safe to run repeatedly (never overrides a piece that
+// already has a library set).
+async function autoAssignKnownLibraries() {
+  const sessions = await loadSessionsFromStorage();
+  const libsByName = {};
+  Object.values(sessions.__libraries__ || {}).forEach(l => { libsByName[l.name] = l.id; });
+  let count = 0;
+  Object.keys(sessions).filter(k => !_isMetaKey(k)).forEach(k => {
+    const s = sessions[k];
+    if (s.libraryId) return; // already assigned — never override
+    const libName = _MIGRATION_LIBRARY_MAP[s.pieceName || k];
+    if (libName && libsByName[libName]) {
+      s.libraryId = libsByName[libName];
+      count++;
+    }
+  });
+  await saveSessionsToStorage(sessions);
+  renderSessionsList();
+  alert(count
+    ? `✓ Assigned ${count} piece${count!==1?'s':''} to their libraries by name.`
+    : 'No Uncategorised pieces matched a known piece name.');
+}
+
 async function renderLibraryManager() {
   const el = document.getElementById('library-manager');
   if (!el) return;
@@ -1316,7 +1350,8 @@ async function renderLibraryManager() {
     </span>`).join('');
   el.innerHTML = `<span class="lib-chip-label">Libraries</span>${chips}
     <input class="lib-chip-add-input" id="new-library-input" placeholder="+ New library…"
-      onkeydown="if(event.key==='Enter'){createLibrary(this.value);this.value='';}">`;
+      onkeydown="if(event.key==='Enter'){createLibrary(this.value);this.value='';}">
+    <span class="lib-chip-link" onclick="autoAssignKnownLibraries()" title="Assign any Uncategorised piece into its known library by name — useful right after importing an older backup">auto-assign known pieces</span>`;
   _refreshNewPieceLibrarySelect();
 }
 
