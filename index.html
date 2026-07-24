@@ -618,7 +618,7 @@ input[type=file]{display:none}
 <header>
   <div style="display:flex;align-items:center">
     <span class="app-name">Rehearsal Space</span>
-    <span class="app-ver">v7.5</span>
+    <span class="app-ver">v8.0</span>
   </div>
 </header>
 
@@ -882,6 +882,13 @@ input[type=file]{display:none}
 
   <!-- Library -->
   <div class="library-panel">
+    <!-- Google sign-in banner (Firebase Phase 2 — auth only, no data sync yet) -->
+    <div id="auth-banner" class="folder-banner" style="display:none">
+      <span class="folder-banner-msg" id="auth-banner-msg"></span>
+      <div class="folder-banner-actions">
+        <button class="btn-sm primary" id="auth-banner-btn" onclick="authBannerAction()"></button>
+      </div>
+    </div>
     <!-- Folder connection banner -->
     <div id="folder-banner" class="folder-banner" style="display:none">
       <span class="folder-banner-msg" id="folder-banner-msg"></span>
@@ -946,7 +953,10 @@ input[type=file]{display:none}
       <span>Documentation</span><span id="docs-arrow">▸</span>
     </button>
     <div class="collapsible-body" id="docs-body">
-      <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v7.6</span>
+      <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v8.0</span>
+
+      <div class="doc-h">WHAT'S NEW IN v8.0</div>
+      · <strong style="color:var(--text)">Google sign-in added (Firebase Phase 2):</strong> A sign-in banner now appears above the library panel, wired to the real <code>rehearsal-space-f1642</code> Firebase project. This is auth only — signing in has no effect on your pieces yet; everything still saves to localStorage exactly as before. First version marked with a major bump rather than another v7.x tick, since this is the first release where the app has any online capability at all (versus purely local iteration through v7.x). Data migration to Firestore/Storage is a separate, later step (Phase 3).<br>
 
       <div class="doc-h">WHAT'S NEW IN v7.6</div>
       · <strong style="color:var(--text)">Libraries + Collections replace flat categories:</strong> Libraries are a piece's permanent home — exactly one per piece, renameable, and built to support nesting later. Collections are flexible, non-exclusive groupings — a piece can sit in zero, one, or several at once (e.g. a concert setlist drawn from multiple libraries), independent of its library. Deleting a library never deletes piece data — affected pieces just move to Uncategorised. Deleting a collection only removes the tag from pieces; the pieces themselves are never touched. Existing pieces were migrated automatically on first load.<br>
@@ -5628,6 +5638,81 @@ window.addEventListener('beforeunload', e => {
     e.returnValue = '';
   }
 });
+</script>
+
+<!-- ══════════════════════════════════════════════
+     FIREBASE — PHASE 2: SIGN-IN ONLY
+     ══════════════════════════════════════════════
+     This wires up real Google sign-in against the same Firebase project
+     used in the Phase 0 trust test (rehearsal-space-f1642). It intentionally
+     does NOT touch how pieces/markers/audio are saved — that's Phase 3.
+     Signing in here has no effect on your data: everything still lives in
+     localStorage exactly as before. Auth is verified in isolation first,
+     per the memo's phased plan, before any real data migration happens. -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js";
+  import {
+    getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCUyXe-JszYsbY1XJ8bhjtdHhrajIcHFDA",
+    authDomain: "rehearsal-space-f1642.firebaseapp.com",
+    projectId: "rehearsal-space-f1642",
+    storageBucket: "rehearsal-space-f1642.firebasestorage.app",
+    messagingSenderId: "851638184114",
+    appId: "1:851638184114:web:be41418c0975b0b75f81ab"
+  };
+
+  const firebaseApp = initializeApp(firebaseConfig);
+  const auth = getAuth(firebaseApp);
+  const googleProvider = new GoogleAuthProvider();
+
+  let currentUser = null;
+
+  function _renderAuthBanner() {
+    const banner = document.getElementById('auth-banner');
+    const msg = document.getElementById('auth-banner-msg');
+    const btn = document.getElementById('auth-banner-btn');
+    if (!banner || !msg || !btn) return;
+    banner.style.display = '';
+    if (currentUser) {
+      banner.classList.add('connected');
+      const who = currentUser.email || currentUser.displayName || 'Google account';
+      msg.innerHTML = `<strong>✓ Signed in</strong> as ${who} — data still saves locally only, for now`;
+      btn.textContent = 'Sign out';
+    } else {
+      banner.classList.remove('connected');
+      msg.innerHTML = 'Sign in with Google to prepare for cloud sync — your pieces stay local for now';
+      btn.textContent = 'Sign in with Google';
+    }
+  }
+
+  // Exposed on window so the existing inline onclick="" pattern used
+  // throughout the rest of the app keeps working here too.
+  window.authBannerAction = async function() {
+    if (currentUser) {
+      try { await signOut(auth); }
+      catch(e) { console.warn('Sign-out failed:', e); }
+    } else {
+      try { await signInWithPopup(auth, googleProvider); }
+      catch(e) {
+        if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
+          console.warn('Sign-in failed:', e);
+          alert('Sign-in failed: ' + e.message);
+        }
+      }
+    }
+  };
+
+  onAuthStateChanged(auth, (user) => {
+    currentUser = user;
+    _renderAuthBanner();
+  });
+
+  // Render once immediately so the banner isn't blank before the first
+  // auth-state callback fires (which can take a moment on first load).
+  _renderAuthBanner();
 </script>
 </body>
 </html>
