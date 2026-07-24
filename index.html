@@ -482,6 +482,12 @@ input[type=file]{display:none}
 .lib-manage-toggle{font-size:0.4rem;color:var(--text-faint);cursor:pointer;
   padding:0.3rem 0.5rem;border-bottom:1px solid var(--border);transition:color 0.15s}
 .lib-manage-toggle:hover{color:var(--text-mid)}
+/* ── PASSIVE CLOUD SYNC STATUS BADGE ── */
+#cloud-status-badge{font-size:0.4rem;color:var(--text-faint);margin-left:0.6rem;
+  vertical-align:middle;cursor:default;transition:color 0.2s}
+#cloud-status-badge.state-pushing,#cloud-status-badge.state-pulling{color:var(--accent)}
+#cloud-status-badge.state-synced{color:var(--green)}
+#cloud-status-badge.state-error{color:var(--red);cursor:pointer;text-decoration:underline dotted}
 /* ── PASSAGE QUEUE ── */
 .queue-btn-bar{display:flex;align-items:center;gap:0.5rem;padding:0.25rem 0.1rem;margin-bottom:0.2rem;flex-wrap:wrap}
 .queue-play-btn{background:var(--green);border:1px solid var(--green);color:#fff;font-family:'JetBrains Mono',monospace;font-size:0.42rem;padding:0.1rem 0.5rem;cursor:pointer;letter-spacing:0.05em;transition:all 0.15s}
@@ -653,12 +659,13 @@ input[type=file]{display:none}
 <header>
   <div style="display:flex;align-items:center">
     <span class="app-name">Rehearsal Space</span>
-    <span class="app-ver">v8.7</span>
+    <span class="app-ver">v9.0</span>
   </div>
 </header>
 
 <div class="piece-title-bar">
   <div class="piece-title" id="piece-title">Select a piece from the library</div>
+  <span id="cloud-status-badge" style="display:none"></span>
 </div>
 
 <div class="workspace">
@@ -932,9 +939,8 @@ input[type=file]{display:none}
           <button class="hdr-dropdown-item" onclick="exportLibraryJSON();closeHdrMenus()">↓ Download backup</button>
           <label class="hdr-dropdown-item" style="cursor:pointer" for="import-json-input">↑ Restore from file</label>
           <input type="file" id="import-json-input" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" onchange="importLibraryJSON(this.files[0]);closeHdrMenus()">
-          <div class="hdr-dropdown-label" id="cloud-sync-label" style="display:none">Cloud (Phase 3 — testing)</div>
-          <button class="hdr-dropdown-item" id="cloud-sync-btn" onclick="syncPieceToCloudUI()" style="display:none"></button>
-          <button class="hdr-dropdown-item" id="cloud-load-btn" onclick="loadPieceFromCloudUI()" style="display:none"></button>
+          <div class="hdr-dropdown-label" id="cloud-sync-label" style="display:none">Cloud</div>
+          <button class="hdr-dropdown-item" id="cloud-force-btn" onclick="forceCloudSyncNow()" style="display:none">↻ Sync now (manual)</button>
           <div class="hdr-dropdown-label">Advanced</div>
           <label class="hdr-dropdown-item" style="cursor:pointer" for="piece-txt-input">↑ Load notes from .txt</label>
           <input type="file" id="piece-txt-input" accept=".txt,text/plain" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" onchange="manualLoadPieceTxt(this.files[0]);closeHdrMenus()">
@@ -981,7 +987,10 @@ input[type=file]{display:none}
       <span>Documentation</span><span id="docs-arrow">▸</span>
     </button>
     <div class="collapsible-body" id="docs-body">
-      <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v8.7</span>
+      <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v9.0</span>
+
+      <div class="doc-h">WHAT'S NEW IN v9.0</div>
+      · <strong style="color:var(--text)">Cloud sync is now fully automatic, both directions:</strong> No more manual "Sync"/"Load" buttons to click. Every edit quietly pushes to Firestore a couple seconds after you stop typing (metadata only — cheap and safe to do often). Attaching a new audio file uploads it to Storage automatically, once, right then. Opening any piece silently checks the cloud first — if it's newer, it's pulled down automatically, and if that piece has synced audio, it's fetched straight from Storage with **no file-picker popup at all**. A small passive status readout next to the piece title (☁ synced / saving… / checking… / error) replaces the old click-and-wait buttons. A single "↻ Sync now" fallback remains in the ⋯ menu for forcing an immediate check (e.g. right after coming back online). Marked as v9.0 rather than another v8.x tick — this is the same kind of qualitative shift as v8.0's original online-capability jump: the app goes from "you must remember to sync" to "it just works in the background."<br>
 
       <div class="doc-h">WHAT'S NEW IN v8.7</div>
       · <strong style="color:var(--text)">Load from cloud — the other half of Phase 3:</strong> New "☁ Load [piece] from cloud" item, right below Sync. Compares real last-edit timestamps and only pulls cloud data down if it's actually newer than local — never silently overwrites a newer local edit. If the piece has synced audio, it's fetched and auto-loaded directly from Storage, skipping the manual file-picker entirely. Library/Collection registries are pulled down alongside it so libraryId/collectionIds resolve correctly. <strong style="color:var(--text)">Timestamp fix:</strong> syncing no longer overwrites a piece's real last-edited time with the sync moment — that bug would have broken the newest-wins comparison this relies on. <strong style="color:var(--text)">Renamed:</strong> the Firestore "meta" documents are now called "organization" (libraries/collections), more descriptive when browsing the console.<br>
@@ -1044,10 +1053,10 @@ input[type=file]{display:none}
       · <s style="opacity:0.5">Full library export/import</s> — done (v8.2 "Backup ▾" menu; auto-sort on import added v8.1/v8.3)<br>
       · Clip speed label — display recording tempo next to each take (e.g. "A→B · 75%")<br>
       · Score-to-marker workflow — tap-to-place guided mark placement from a rehearsal letter list<br>
-      <div style="color:var(--accent);font-size:0.4rem;letter-spacing:0.1em;margin:0.4rem 0 0.1rem">CLOUD SYNC — Phase 3, in progress</div>
-      · <s style="opacity:0.5">Sign-in</s> — done (v8.0). <s style="opacity:0.5">Firestore + Storage wired, one-piece manual sync</s> — done (v8.5). <s style="opacity:0.5">Load-from-cloud, newest-wins by real edit timestamp, audio auto-fetched from Storage on load</s> — done (v8.7).<br>
-      · Still manual and single-piece by design, per the phased plan (each step stress-tested before the next). Remaining: bulk/automatic sync across the whole library, a way to browse or pull down cloud pieces that were never local on this device, and real conflict handling beyond the current simple newest-timestamp-wins rule.<br>
-      · iPhone companion app — simplified mobile version; contingent on the above being solid across the full library first, not just one test piece.<br>
+      <div style="color:var(--accent);font-size:0.4rem;letter-spacing:0.1em;margin:0.4rem 0 0.1rem">CLOUD SYNC — Phase 3 core done; still single-device-tested</div>
+      · <s style="opacity:0.5">Sign-in</s> — done (v8.0). <s style="opacity:0.5">Firestore + Storage wired</s> — done (v8.5). <s style="opacity:0.5">Two-way sync, newest-wins by real edit timestamp, audio auto-fetched on load</s> — done (v8.7). <s style="opacity:0.5">Fully automatic — no manual buttons, push on edit + open-audio, pull on piece open</s> — done (v9.0).<br>
+      · Remaining: every piece syncs independently as you touch it — there's still no bulk "sync my whole library at once" pass, and no way to browse/pull a cloud piece that was never opened locally on a given device (auto-pull only fires when you open a piece that already exists locally there). Conflict handling remains a simple newest-timestamp-wins rule — untested with truly simultaneous edits across two devices at once.<br>
+      · iPhone companion app — simplified mobile version; contingent on the above holding up across real day-to-day multi-device use, not just the "Birds of a Feather" test case.<br>
       <div style="color:var(--accent);font-size:0.4rem;letter-spacing:0.1em;margin:0.4rem 0 0.1rem">RECORDING SYNC — needs testing</div>
       · After the v7.1 lead-in fix, test a recording to verify reference and recorded tracks align. If a residual offset remains, the existing latency control should handle fine-tuning. If a second systematic issue is present, diagnose before adding new controls.<br>
       <div style="color:var(--accent);font-size:0.4rem;letter-spacing:0.1em;margin:0.4rem 0 0.1rem">MEDIUM — moderate complexity</div>
@@ -1518,46 +1527,66 @@ function closeHdrMenus() {
 // Cloud sync menu item — only meaningful once signed in (Phase 3, testing).
 // Reflects sign-in state (set by the Firebase module script) and whether a
 // piece is currently open, since syncing needs both.
+// ══════════════════════════════════════════════
+// CLOUD SYNC — automatic, both directions
+// ══════════════════════════════════════════════
+// Push: every edit (via the same debounce point as local autosave) quietly
+//   pushes metadata to Firestore if signed in. Audio uploads once,
+//   automatically, the moment a file is attached — not on every edit, since
+//   re-uploading an unchanged mp3 on every marker tweak would be wasteful.
+// Pull: opening a piece silently checks the cloud copy; if it's newer
+//   (compares real savedAt timestamps), it's pulled down automatically,
+//   including auto-fetching audio from Storage — skipping the manual file
+//   picker entirely when that succeeds.
+// Feedback is passive (a small status badge next to the piece title) rather
+// than alerts/dialogs, since this all now happens in the background.
+// A single "↻ Sync now" fallback remains in the ⋯ menu for the rare case
+// of wanting to force a check without waiting (e.g. just came back online).
+
+let _cloudPushTimer = null;
+let _loadingFromCloud = false; // guards against re-uploading audio we just downloaded
+
+function _cloudSignedIn() {
+  return (typeof window.getCloudUser === 'function') ? window.getCloudUser() : null;
+}
+
+function _setCloudStatus(state) {
+  const badge = document.getElementById('cloud-status-badge');
+  if (!badge) return;
+  badge.className = state ? `state-${state}` : '';
+  if (!state) { badge.style.display = 'none'; badge.textContent = ''; return; }
+  badge.style.display = '';
+  const labels = {
+    pushing: '☁ saving…', pulling: '☁ checking cloud…',
+    synced: '☁ synced', error: '☁ sync error — click to retry'
+  };
+  badge.textContent = labels[state] || '';
+  badge.title = state === 'error' ? 'Last cloud sync failed — click "↻ Sync now" in the ⋯ menu, or it will retry on your next edit' : '';
+}
+
 function _updateCloudSyncMenuItem() {
   const label = document.getElementById('cloud-sync-label');
-  const btn = document.getElementById('cloud-sync-btn');
-  const loadBtn = document.getElementById('cloud-load-btn');
-  if (!label || !btn || !loadBtn) return;
-  const user = (typeof window.getCloudUser === 'function') ? window.getCloudUser() : null;
-  if (!user) { label.style.display = 'none'; btn.style.display = 'none'; loadBtn.style.display = 'none'; return; }
-  label.style.display = ''; btn.style.display = ''; loadBtn.style.display = '';
-  if (currentPieceName) {
-    btn.textContent = `☁ Sync "${currentPieceName}" to cloud`;
-    btn.disabled = false;
-    btn.style.opacity = '';
-    loadBtn.textContent = `☁ Load "${currentPieceName}" from cloud`;
-    loadBtn.disabled = false;
-    loadBtn.style.opacity = '';
-  } else {
-    btn.textContent = '☁ Open a piece to sync';
-    btn.disabled = true;
-    btn.style.opacity = '0.4';
-    loadBtn.textContent = '☁ Open a piece to load';
-    loadBtn.disabled = true;
-    loadBtn.style.opacity = '0.4';
-  }
-}
-// Assembles the current piece's full data and hands it to the Firebase
-// module script for the actual Firestore/Storage write. Audio only uploads
-// if a real file is attached this session (currentAudioFile) — see the
-// note by its declaration for why the app can't rely on it otherwise.
-async function syncPieceToCloudUI() {
-  closeHdrMenus();
-  if (typeof window.cloudSyncCurrentPiece !== 'function') {
-    alert('Cloud sync is still loading — try again in a moment.');
+  const btn = document.getElementById('cloud-force-btn');
+  const badge = document.getElementById('cloud-status-badge');
+  if (!label || !btn) return;
+  const user = _cloudSignedIn();
+  if (!user) {
+    label.style.display = 'none'; btn.style.display = 'none';
+    if (badge) badge.style.display = 'none';
     return;
   }
-  if (!currentPieceName) { alert('Open a piece first, then sync it.'); return; }
-  const sessions = await loadSessionsFromStorage();
-  const s = sessions[currentPieceName];
-  if (!s) { alert("Could not find this piece's saved data."); return; }
-  const pieceData = {
-    pieceName: currentPieceName,
+  label.style.display = ''; btn.style.display = '';
+  btn.disabled = !currentPieceName;
+  btn.style.opacity = currentPieceName ? '' : '0.4';
+}
+
+// Assembles the currently-open piece's data in the exact shape Firestore
+// expects. Shared by both the debounced auto-push and the manual fallback.
+async function _assembleCloudPieceData(pieceName, sessions) {
+  const s = sessions[pieceName];
+  if (!s) return null;
+  return {
+    pieceName,
     audioFileName: s.audioFileName || audioFileName || '',
     audioDuration: s.audioDuration || audioDuration || 0,
     markers: s.markers || markers || [],
@@ -1569,101 +1598,117 @@ async function syncPieceToCloudUI() {
     targetDate: s.targetDate || null,
     libraryId: s.libraryId || null,
     collectionIds: Array.isArray(s.collectionIds) ? s.collectionIds : [],
-    savedAt: s.savedAt || Date.now() // real last-edit time, NOT sync time —
-                                       // "syncedAt" (set by the module script)
-                                       // tracks when it was pushed instead
+    savedAt: s.savedAt || Date.now()
   };
-  await window.cloudSyncCurrentPiece(currentPieceName, pieceData, currentAudioFile,
-    sessions.__libraries__ || {}, sessions.__collections__ || {});
 }
-// Pulls the currently-open piece's cloud copy down into local storage, if
-// the cloud copy is newer (compares real savedAt timestamps — "newest
-// wins", per the agreed rule). If cloud has an audio file, fetches and
-// auto-loads it directly, skipping the manual file-picker entirely — the
-// whole point of having synced audio in the first place. If local is
-// already newer or equal, does nothing and reports that back; the existing
-// Sync button already covers "push my version up to overwrite cloud" for
-// the rare case the local copy is deliberately preferred.
-async function loadPieceFromCloudUI() {
-  closeHdrMenus();
-  if (typeof window.cloudFetchPiece !== 'function') {
-    alert('Cloud sync is still loading — try again in a moment.');
-    return;
-  }
-  if (!currentPieceName) { alert('Open a piece first, then load it from the cloud.'); return; }
+
+// Debounced trigger — called from _autosaveToLibrary() after every edit.
+// Metadata only (no audio) — cheap and safe to fire often.
+function _scheduleCloudMetadataPush() {
+  if (!_cloudSignedIn() || !currentPieceName) return;
+  clearTimeout(_cloudPushTimer);
+  _cloudPushTimer = setTimeout(() => _pushCloudNow(false), 2500);
+}
+
+// includeAudio=true is used exactly once, right when a new file is attached
+// (see onAudioFile below) — not on every debounced metadata push.
+async function _pushCloudNow(includeAudio) {
+  if (typeof window.cloudSyncCurrentPiece !== 'function') return;
+  if (!_cloudSignedIn() || !currentPieceName) return;
   const pieceName = currentPieceName;
-  const cloudData = await window.cloudFetchPiece(pieceName);
-  if (!cloudData) {
-    alert(`No cloud copy of "${pieceName}" found yet — sync it first.`);
-    return;
-  }
   const sessions = await loadSessionsFromStorage();
-  const localData = sessions[pieceName];
-  const localSavedAt = localData?.savedAt || 0;
-  const cloudSavedAt = cloudData.savedAt || 0;
+  const pieceData = await _assembleCloudPieceData(pieceName, sessions);
+  if (!pieceData) return;
+  _setCloudStatus(includeAudio ? 'pushing' : 'pushing');
+  const result = await window.cloudSyncCurrentPiece(pieceName, pieceData,
+    includeAudio ? currentAudioFile : null, sessions.__libraries__ || {}, sessions.__collections__ || {});
+  _setCloudStatus(result?.ok ? 'synced' : 'error');
+}
 
-  if (localData && localSavedAt >= cloudSavedAt) {
-    alert(`Your local copy of "${pieceName}" is already up to date (or newer) — nothing loaded.\n\n` +
-      `Local last saved: ${localSavedAt ? new Date(localSavedAt).toLocaleString() : 'unknown'}\n` +
-      `Cloud last saved: ${cloudSavedAt ? new Date(cloudSavedAt).toLocaleString() : 'unknown'}\n\n` +
-      `If you actually want the cloud version anyway, that's not built yet — let me know if you hit this.`);
-    return;
-  }
+// Called from loadNamedSession() right after a piece opens. Silently checks
+// whether the cloud copy is newer; if so, pulls it down (data + registries),
+// then tries to auto-fetch audio from Storage. Returns true if audio was
+// successfully auto-loaded, so the caller can skip the manual file picker.
+async function _autoCloudPullOnOpen(name) {
+  if (typeof window.cloudFetchPiece !== 'function' || !_cloudSignedIn()) return false;
+  try {
+    const cloudData = await window.cloudFetchPiece(name);
+    if (!cloudData) { _setCloudStatus(null); return false; } // never synced — nothing to report
+    const sessions = await loadSessionsFromStorage();
+    const localData = sessions[name];
+    const localSavedAt = localData?.savedAt || 0;
+    const cloudSavedAt = cloudData.savedAt || 0;
+    if (localData && localSavedAt >= cloudSavedAt) { _setCloudStatus('synced'); return false; } // local already current
 
-  // Bring in library/collection registries so libraryId/collectionIds resolve
-  const { libraries, collections } = await window.cloudFetchLibrariesAndCollections();
-  Object.keys(libraries || {}).forEach(id => {
-    if (!sessions.__libraries__[id]) sessions.__libraries__[id] = libraries[id];
-  });
-  Object.keys(collections || {}).forEach(id => {
-    if (!sessions.__collections__[id]) sessions.__collections__[id] = collections[id];
-  });
+    _setCloudStatus('pulling');
+    const { libraries, collections } = await window.cloudFetchLibrariesAndCollections();
+    Object.keys(libraries || {}).forEach(id => { if (!sessions.__libraries__[id]) sessions.__libraries__[id] = libraries[id]; });
+    Object.keys(collections || {}).forEach(id => { if (!sessions.__collections__[id]) sessions.__collections__[id] = collections[id]; });
 
-  // Apply cloud piece data locally
-  sessions[pieceName] = {
-    pieceName: cloudData.pieceName || pieceName,
-    audioFileName: cloudData.audioFileName || '',
-    audioDuration: cloudData.audioDuration || 0,
-    markers: cloudData.markers || [],
-    markerIdCounter: cloudData.markerIdCounter || 0,
-    segments: cloudData.segments || [],
-    segmentIdCounter: cloudData.segmentIdCounter || 0,
-    notes: cloudData.notes || '',
-    competence: cloudData.competence || null,
-    targetDate: cloudData.targetDate || null,
-    libraryId: cloudData.libraryId || null,
-    collectionIds: Array.isArray(cloudData.collectionIds) ? cloudData.collectionIds : [],
-    savedAt: cloudSavedAt
-  };
-  const order = sessions.__order__ || [];
-  if (!order.includes(pieceName)) order.push(pieceName);
-  sessions.__order__ = order;
-  await saveSessionsToStorage(sessions);
+    sessions[name] = {
+      pieceName: cloudData.pieceName || name,
+      audioFileName: cloudData.audioFileName || '',
+      audioDuration: cloudData.audioDuration || 0,
+      markers: cloudData.markers || [],
+      markerIdCounter: cloudData.markerIdCounter || 0,
+      segments: cloudData.segments || [],
+      segmentIdCounter: cloudData.segmentIdCounter || 0,
+      notes: cloudData.notes || '',
+      competence: cloudData.competence || null,
+      targetDate: cloudData.targetDate || null,
+      libraryId: cloudData.libraryId || null,
+      collectionIds: Array.isArray(cloudData.collectionIds) ? cloudData.collectionIds : [],
+      savedAt: cloudSavedAt
+    };
+    const order = sessions.__order__ || [];
+    if (!order.includes(name)) order.push(name);
+    sessions.__order__ = order;
+    await saveSessionsToStorage(sessions);
 
-  // Re-load this piece into the active view — suppress the normal auto
-  // file-picker since we're about to try fetching audio from cloud instead
-  await loadNamedSession(pieceName, { suppressAudioPrompt: true });
-
-  // Try to auto-fetch audio from Storage, skipping the manual file picker
-  let audioLoaded = false;
-  if (cloudData.audioStoragePath) {
-    const blob = await window.cloudFetchAudioBlob(cloudData.audioStoragePath);
-    if (blob) {
-      const file = new File([blob], cloudData.audioFileName || 'audio', { type: blob.type || 'audio/mpeg' });
-      onAudioFile(file);
-      audioLoaded = true;
+    // Re-apply to the actively-displayed state (this resolves after
+    // loadNamedSession's own initial read, so the newer data needs
+    // re-applying here rather than waiting for the next piece switch)
+    if (currentPieceName === name) {
+      markers = sessions[name].markers;
+      markerIdCounter = sessions[name].markerIdCounter;
+      segments = _migrateStatusLabels(sessions[name].segments);
+      segmentIdCounter = sessions[name].segmentIdCounter;
+      currentPieceCompetence = sessions[name].competence;
+      currentPieceTargetDate = sessions[name].targetDate;
+      audioFileName = sessions[name].audioFileName;
+      const notesEl = document.getElementById('piece-notes');
+      if (notesEl) notesEl.value = sessions[name].notes || '';
+      renderMarkers(); renderSegments(); refreshSegmentDropdowns(); renderSessionsList();
     }
-  }
 
-  const notice = document.getElementById('import-notice');
-  if (notice) {
-    notice.textContent = `☁ Loaded "${pieceName}" from cloud` +
-      (audioLoaded ? ' — audio auto-loaded too'
-        : (cloudData.audioStoragePath ? ' — audio download failed, reattach manually'
-          : ' — no audio synced yet for this piece'));
-    notice.classList.add('visible');
-    setTimeout(() => notice.classList.remove('visible'), 7000);
+    let audioLoaded = false;
+    if (cloudData.audioStoragePath) {
+      const blob = await window.cloudFetchAudioBlob(cloudData.audioStoragePath);
+      if (blob) {
+        const file = new File([blob], cloudData.audioFileName || 'audio', { type: blob.type || 'audio/mpeg' });
+        _loadingFromCloud = true;
+        onAudioFile(file);
+        _loadingFromCloud = false;
+        audioLoaded = true;
+      }
+    }
+    _setCloudStatus('synced');
+    return audioLoaded;
+  } catch(e) {
+    console.warn('Auto cloud pull failed:', e);
+    _setCloudStatus('error');
+    return false;
   }
+}
+
+// Manual fallback in the ⋯ menu — forces an immediate check-and-pull, then
+// a fresh push, rather than waiting for the debounce or the next piece open.
+async function forceCloudSyncNow() {
+  closeHdrMenus();
+  if (!currentPieceName) { alert('Open a piece first.'); return; }
+  if (!_cloudSignedIn()) { alert('Sign in with Google first.'); return; }
+  await _autoCloudPullOnOpen(currentPieceName);
+  await _pushCloudNow(!!currentAudioFile);
 }
 function toggleCollectionPicker(pickerId) {
   const el = document.getElementById(pickerId);
@@ -1754,6 +1799,12 @@ function onAudioFile(file) {
       if (markers.length === 0) addMarker('1', 'R', 0);
       else renderMarkers();
       saveSession(); renderSessionsList();
+      // Auto-upload this audio to the cloud, once, right now — unless this
+      // file just came FROM the cloud itself (pointless to re-upload what
+      // we just downloaded), and only if signed in.
+      if (!_loadingFromCloud && _cloudSignedIn() && currentPieceName) {
+        _pushCloudNow(true);
+      }
     } catch(err) {
       alert('Could not decode audio file: ' + err.message);
     }
@@ -2933,6 +2984,7 @@ function _autosaveToLibrary() {
         savedAt: Date.now()
       };
       await saveSessionsToStorage(sessions);
+      _scheduleCloudMetadataPush(); // background, silent — see definition for details
     } catch(e) {}
   }, 800); // debounce: wait 800ms after last edit
 }
@@ -3050,6 +3102,8 @@ async function loadNamedSession(name, opts = {}) {
   const s = sessions[name];
   if (!s) return;
 
+  _setCloudStatus(_cloudSignedIn() ? 'pulling' : null);
+
   // Stop and clear current audio
   if (isPlaying) _pause();
   if (audioEl) { audioEl.pause(); audioEl.src = ''; }
@@ -3084,8 +3138,17 @@ async function loadNamedSession(name, opts = {}) {
 
   // Show no-file notice — user clicks "Load audio file" button if needed
   _updateNoFileNotice();
-  if (audioFileName && !opts.suppressAudioPrompt) {
+
+  // Silently check the cloud for a newer copy of this piece. If it has
+  // audio, this may auto-load it directly — in which case skip the manual
+  // file picker below entirely.
+  let audioHandledByCloud = false;
+  if (!opts.suppressAudioPrompt) {
+    audioHandledByCloud = await _autoCloudPullOnOpen(name);
+  }
+  if (audioFileName && !audioHandledByCloud && !opts.suppressAudioPrompt) {
     // Auto-open file picker only if piece has an expected audio file
+    // and the cloud didn't already supply it
     document.getElementById('audio-input').click();
   }
 }
@@ -5939,24 +6002,25 @@ window.addEventListener('beforeunload', e => {
   // piece before any bulk/automatic sync of the rest of the library exists.
   // Data shape: users/{uid}/pieces/{pieceId} holds the same fields already
   // used locally (markers, segments, notes, libraryId, collectionIds, etc).
-  // users/{uid}/meta/libraries and .../meta/collections carry the registries
-  // so libraryId/collectionIds resolve to something meaningful if this is
-  // ever read from a different device. Audio uploads to Storage only if a
-  // real file is attached this session — see currentAudioFile's declaration
-  // in the main script for why that's the only moment its bytes exist.
+  // users/{uid}/organization/libraries and .../organization/collections carry
+  // the registries so libraryId/collectionIds resolve to something
+  // meaningful if this is ever read from a different device. Audio uploads
+  // to Storage only if a real file is attached this session — see
+  // currentAudioFile's declaration in the main script for why that's the
+  // only moment its bytes exist.
+  //
+  // These functions are now called automatically in the background (on
+  // every edit, on attaching audio, on opening a piece) rather than from a
+  // manual button click, so they deliberately do NOT alert() or show
+  // notices themselves — they return a plain result object, and the main
+  // script decides how (or whether) to surface it, via the passive status
+  // badge rather than interrupting dialogs.
   function _slugifyPieceId(name) {
     return name.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 120) || 'piece';
   }
 
   window.cloudSyncCurrentPiece = async function(pieceName, pieceData, audioFile, libraries, collections) {
-    if (!currentUser) { alert('Sign in with Google first, then sync.'); return; }
-    const notice = document.getElementById('import-notice');
-    const showNotice = (text) => {
-      if (!notice) return;
-      notice.textContent = text;
-      notice.classList.add('visible');
-      setTimeout(() => notice.classList.remove('visible'), 7000);
-    };
+    if (!currentUser) return { ok: false, reason: 'not-signed-in' };
     const pieceId = _slugifyPieceId(pieceName);
     try {
       let audioStoragePath = null;
@@ -5979,13 +6043,10 @@ window.addEventListener('beforeunload', e => {
         { libraries: libraries || {} }, { merge: true });
       await setDoc(doc(db, 'users', currentUser.uid, 'organization', 'collections'),
         { collections: collections || {} }, { merge: true });
-
-      showNotice(audioFile
-        ? `☁ Synced "${pieceName}" to cloud, including audio`
-        : `☁ Synced "${pieceName}" data to cloud — no audio attached this session, reattach the file and sync again to include it`);
+      return { ok: true, audioUploaded: !!audioFile };
     } catch(e) {
       console.error('Cloud sync failed:', e);
-      alert('Cloud sync failed: ' + e.message + '\n\nCheck the browser console for details.');
+      return { ok: false, reason: 'error', error: e };
     }
   };
 
@@ -5993,14 +6054,13 @@ window.addEventListener('beforeunload', e => {
   // registries, and (if present) its audio bytes. The main script compares
   // timestamps and decides whether to actually apply what comes back.
   window.cloudFetchPiece = async function(pieceName) {
-    if (!currentUser) { alert('Sign in with Google first.'); return null; }
+    if (!currentUser) return null;
     const pieceId = _slugifyPieceId(pieceName);
     try {
       const snap = await getDoc(doc(db, 'users', currentUser.uid, 'pieces', pieceId));
       return snap.exists() ? snap.data() : null;
     } catch(e) {
       console.error('Cloud fetch failed:', e);
-      alert('Could not read from cloud: ' + e.message);
       return null;
     }
   };
