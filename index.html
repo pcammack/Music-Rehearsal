@@ -659,7 +659,7 @@ input[type=file]{display:none}
 <header>
   <div style="display:flex;align-items:center">
     <span class="app-name">Rehearsal Space</span>
-    <span class="app-ver">v9.1</span>
+    <span class="app-ver">v9.2</span>
   </div>
 </header>
 
@@ -941,6 +941,7 @@ input[type=file]{display:none}
           <input type="file" id="import-json-input" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" onchange="importLibraryJSON(this.files[0]);closeHdrMenus()">
           <div class="hdr-dropdown-label" id="cloud-sync-label" style="display:none">Cloud</div>
           <button class="hdr-dropdown-item" id="cloud-force-btn" onclick="forceCloudSyncNow()" style="display:none">↻ Sync now (manual)</button>
+          <button class="hdr-dropdown-item" onclick="mergeDuplicateLibrariesAndCollections()">🧹 Merge duplicate libraries/collections</button>
           <div class="hdr-dropdown-label">Advanced</div>
           <label class="hdr-dropdown-item" style="cursor:pointer" for="piece-txt-input">↑ Load notes from .txt</label>
           <input type="file" id="piece-txt-input" accept=".txt,text/plain" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" onchange="manualLoadPieceTxt(this.files[0]);closeHdrMenus()">
@@ -989,6 +990,8 @@ input[type=file]{display:none}
     <div class="collapsible-body" id="docs-body">
       <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v9.0</span>
 
+      <div class="doc-h">WHAT'S NEW IN v9.2</div>
+      · <strong style="color:var(--text)">Fixed: libraries/collections doubled across devices.</strong> Every browser bootstraps its own default libraries ("Solo", "Ensemble", "Jazz", "Pop") the first time it's ever opened, each with its own random id. Cloud sync was merging these registries by id, not by name — so a second device's differently-id'd "Solo" showed up as a second, separate "Solo" instead of being recognized as the same library, compounding with every device used. Cloud pull now reconciles by name: if a local library/collection with the same name already exists, the cloud copy isn't imported as a duplicate — pieces referencing it are transparently re-pointed to the existing local entry instead. A new "🧹 Merge duplicate libraries/collections" item in the ⋯ menu is available as a one-time manual cleanup for anyone who already accumulated duplicates before this fix — safe to run per-browser, re-points affected pieces before removing the duplicate entries, never touches piece data itself.<br>
       <div class="doc-h">WHAT'S NEW IN v9.1</div>
       · <strong style="color:var(--text)">Fixed: cloud audio still wasn't loading, even after the v9.0.1 code fixes.</strong> The three code bugs fixed in v9.0.1 were real, but there was a fourth issue sitting outside the app's code entirely: the Firebase Storage bucket had no CORS configuration, so the browser silently blocked the actual audio-byte download (<code>fetch()</code> to the <code>alt=media</code> URL) even though <code>getDownloadURL()</code> itself succeeded — no error surfaced anywhere in the app's own logic, only as a browser-level CORS block visible in dev tools. Fixed with a one-time <code>gsutil cors set</code> command against the bucket (see the plan doc for the exact command). Confirmed live: audio now round-trips through the cloud correctly, matching what the doc had (incorrectly) already claimed as tested back in v9.0.<br>
       <div class="doc-h">WHAT'S NEW IN v9.0.1</div>
@@ -1302,6 +1305,75 @@ async function setPieceLibrary(name, libId) {
   sessions[name].libraryId = libId || null;
   await saveSessionsToStorage(sessions);
   renderSessionsList();
+}
+
+// One-time manual cleanup for libraries/collections that were duplicated by
+// the cloud-merge-by-id bug (fixed in v9.2 — see _autoCloudPullOnOpen).
+// Groups by trimmed/lowercased name, keeps the first entry in each group as
+// canonical, re-points any piece referencing a "loser" duplicate to the
+// canonical id, then removes the duplicate registry entries. Only affects
+// THIS browser's local data — needs running once on each browser/device
+// that has accumulated duplicates.
+async function mergeDuplicateLibrariesAndCollections() {
+  closeHdrMenus();
+  const sessions = await loadSessionsFromStorage();
+  const pieceKeys = Object.keys(sessions).filter(k => !_isMetaKey(k));
+
+  function findDupGroups(registry) {
+    const byName = {};
+    Object.values(registry || {}).forEach(item => {
+      const key = (item.name || '').trim().toLowerCase();
+      (byName[key] = byName[key] || []).push(item);
+    });
+    return Object.values(byName).filter(g => g.length > 1);
+  }
+
+  const libDupGroups = findDupGroups(sessions.__libraries__);
+  const colDupGroups = findDupGroups(sessions.__collections__);
+
+  if (!libDupGroups.length && !colDupGroups.length) {
+    alert('No duplicate libraries or collections found in this browser.');
+    return;
+  }
+
+  const summaryLines = [
+    ...libDupGroups.map(g => `Library "${g[0].name}" — ${g.length} copies`),
+    ...colDupGroups.map(g => `Collection "${g[0].name}" — ${g.length} copies`)
+  ];
+  const ok = confirm(
+    `Found:\n\n${summaryLines.join('\n')}\n\n` +
+    `Merge each group into a single entry? Pieces keep their assignment, ` +
+    `just re-pointed to one shared entry instead of a duplicate.\n\n` +
+    `This only cleans up THIS browser. If you use another browser/device, ` +
+    `open this same menu item there afterward too.`
+  );
+  if (!ok) return;
+
+  libDupGroups.forEach(group => {
+    const [keeper, ...losers] = group;
+    const loserIds = losers.map(l => l.id);
+    pieceKeys.forEach(k => {
+      if (loserIds.includes(sessions[k].libraryId)) sessions[k].libraryId = keeper.id;
+    });
+    loserIds.forEach(id => { delete sessions.__libraries__[id]; });
+  });
+
+  colDupGroups.forEach(group => {
+    const [keeper, ...losers] = group;
+    const loserIds = losers.map(l => l.id);
+    pieceKeys.forEach(k => {
+      if (Array.isArray(sessions[k].collectionIds)) {
+        sessions[k].collectionIds = sessions[k].collectionIds.map(cid => loserIds.includes(cid) ? keeper.id : cid);
+        // de-dupe in case a piece somehow ended up referencing both the keeper and a loser
+        sessions[k].collectionIds = [...new Set(sessions[k].collectionIds)];
+      }
+    });
+    loserIds.forEach(id => { delete sessions.__collections__[id]; });
+  });
+
+  await saveSessionsToStorage(sessions);
+  renderSessionsList();
+  alert('Duplicates merged in this browser. Repeat on any other browser/device you use.');
 }
 
 // ── Collection CRUD ──
@@ -1656,8 +1728,37 @@ async function _autoCloudPullOnOpen(name) {
     if (metadataIsNewer) {
       _setCloudStatus('pulling');
       const { libraries, collections } = await window.cloudFetchLibrariesAndCollections();
-      Object.keys(libraries || {}).forEach(id => { if (!sessions.__libraries__[id]) sessions.__libraries__[id] = libraries[id]; });
-      Object.keys(collections || {}).forEach(id => { if (!sessions.__collections__[id]) sessions.__collections__[id] = collections[id]; });
+
+      // Reconcile by NAME, not by id. Every browser bootstraps its own
+      // default libraries/collections with fresh random ids the first time
+      // it ever opens the app (see _ensureLibrariesInitialized) — so two
+      // devices independently create their own "Solo"/"Ensemble"/etc, each
+      // with a different id. Merging by id (the old behavior) treated the
+      // cloud's differently-id'd "Solo" as a brand new library and added it
+      // alongside the local one, producing a visible duplicate — and this
+      // compounds with every additional device. Instead: if a local entry
+      // with the same (trimmed, case-insensitive) name already exists, don't
+      // import the cloud copy at all — just remember a translation from the
+      // cloud id to the existing local id, so any piece referencing the
+      // cloud id below still resolves to the correct (single, local) entry.
+      const libIdTranslate = {};
+      const localLibByName = {};
+      Object.values(sessions.__libraries__ || {}).forEach(l => { localLibByName[(l.name||'').trim().toLowerCase()] = l.id; });
+      Object.keys(libraries || {}).forEach(cid => {
+        const clib = libraries[cid];
+        const key = (clib.name||'').trim().toLowerCase();
+        if (localLibByName[key]) { libIdTranslate[cid] = localLibByName[key]; }
+        else if (!sessions.__libraries__[cid]) { sessions.__libraries__[cid] = clib; }
+      });
+      const colIdTranslate = {};
+      const localColByName = {};
+      Object.values(sessions.__collections__ || {}).forEach(c => { localColByName[(c.name||'').trim().toLowerCase()] = c.id; });
+      Object.keys(collections || {}).forEach(cid => {
+        const ccol = collections[cid];
+        const key = (ccol.name||'').trim().toLowerCase();
+        if (localColByName[key]) { colIdTranslate[cid] = localColByName[key]; }
+        else if (!sessions.__collections__[cid]) { sessions.__collections__[cid] = ccol; }
+      });
 
       sessions[name] = {
         pieceName: cloudData.pieceName || name,
@@ -1670,8 +1771,8 @@ async function _autoCloudPullOnOpen(name) {
         notes: cloudData.notes || '',
         competence: cloudData.competence || null,
         targetDate: cloudData.targetDate || null,
-        libraryId: cloudData.libraryId || null,
-        collectionIds: Array.isArray(cloudData.collectionIds) ? cloudData.collectionIds : [],
+        libraryId: cloudData.libraryId ? (libIdTranslate[cloudData.libraryId] || cloudData.libraryId) : null,
+        collectionIds: Array.isArray(cloudData.collectionIds) ? cloudData.collectionIds.map(cid => colIdTranslate[cid] || cid) : [],
         savedAt: cloudSavedAt
       };
       const order = sessions.__order__ || [];
