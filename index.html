@@ -659,7 +659,7 @@ input[type=file]{display:none}
 <header>
   <div style="display:flex;align-items:center">
     <span class="app-name">Rehearsal Space</span>
-    <span class="app-ver">v9.0.1</span>
+    <span class="app-ver">v9.0.2-debug</span>
   </div>
 </header>
 
@@ -1632,10 +1632,12 @@ async function _pushCloudNow(includeAudio) {
 // then tries to auto-fetch audio from Storage. Returns true if audio was
 // successfully auto-loaded, so the caller can skip the manual file picker.
 async function _autoCloudPullOnOpen(name) {
-  if (typeof window.cloudFetchPiece !== 'function' || !_cloudSignedIn()) return false;
+  console.log('[DEBUG] _autoCloudPullOnOpen called for:', name, 'signedIn:', !!_cloudSignedIn());
+  if (typeof window.cloudFetchPiece !== 'function' || !_cloudSignedIn()) { console.log('[DEBUG] bailing early — no cloudFetchPiece fn or not signed in'); return false; }
   try {
     const cloudData = await window.cloudFetchPiece(name);
-    if (!cloudData) { _setCloudStatus(null); return false; } // never synced — nothing to report
+    console.log('[DEBUG] cloudFetchPiece returned:', cloudData);
+    if (!cloudData) { console.log('[DEBUG] cloudData is falsy, returning false'); _setCloudStatus(null); return false; } // never synced — nothing to report
     const sessions = await loadSessionsFromStorage();
     const localData = sessions[name];
     const localSavedAt = localData?.savedAt || 0;
@@ -1698,9 +1700,12 @@ async function _autoCloudPullOnOpen(name) {
 
     // Always attempt the audio fetch if the cloud has a path for it, whether
     // or not the metadata itself needed pulling — see comment above.
+    console.log('[DEBUG] about to check audioStoragePath:', cloudData.audioStoragePath);
     let audioLoaded = false;
     if (cloudData.audioStoragePath) {
+      console.log('[DEBUG] calling cloudFetchAudioBlob with path:', cloudData.audioStoragePath);
       const blob = await window.cloudFetchAudioBlob(cloudData.audioStoragePath);
+      console.log('[DEBUG] cloudFetchAudioBlob returned blob:', blob);
       if (blob) {
         const file = new File([blob], cloudData.audioFileName || 'audio', { type: blob.type || 'audio/mpeg' });
         _loadingFromCloud = true;
