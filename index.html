@@ -659,7 +659,7 @@ input[type=file]{display:none}
 <header>
   <div style="display:flex;align-items:center">
     <span class="app-name">Rehearsal Space</span>
-    <span class="app-ver">v9.0</span>
+    <span class="app-ver">v9.0.1</span>
   </div>
 </header>
 
@@ -989,6 +989,8 @@ input[type=file]{display:none}
     <div class="collapsible-body" id="docs-body">
       <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v9.0</span>
 
+      <div class="doc-h">WHAT'S NEW IN v9.0.1</div>
+      · <strong style="color:var(--text)">Fixed: cloud audio sync was silently broken.</strong> Three separate bugs in the v9.0 automatic sync path meant audio never actually round-tripped through the cloud, even though metadata did: (1) a metadata-only push was writing <code>audioStoragePath: null</code> over top of a real, previously-uploaded path — so any edit made seconds after attaching audio erased the cloud's record that audio existed at all; (2) the auto-pull-on-open logic only attempted to fetch audio when the piece's metadata was itself newer than local — but audio is never persisted locally between sessions, so a same-device reload never re-fetched it, regardless of freshness; (3) the guard meant to stop a just-downloaded file from re-uploading itself was reset before the async decode it was guarding even finished, so that pointless round-trip happened anyway. All three fixed together.<br>
       <div class="doc-h">WHAT'S NEW IN v9.0</div>
       · <strong style="color:var(--text)">Cloud sync is now fully automatic, both directions:</strong> No more manual "Sync"/"Load" buttons to click. Every edit quietly pushes to Firestore a couple seconds after you stop typing (metadata only — cheap and safe to do often). Attaching a new audio file uploads it to Storage automatically, once, right then. Opening any piece silently checks the cloud first — if it's newer, it's pulled down automatically, and if that piece has synced audio, it's fetched straight from Storage with **no file-picker popup at all**. A small passive status readout next to the piece title (☁ synced / saving… / checking… / error) replaces the old click-and-wait buttons. A single "↻ Sync now" fallback remains in the ⋯ menu for forcing an immediate check (e.g. right after coming back online). Marked as v9.0 rather than another v8.x tick — this is the same kind of qualitative shift as v8.0's original online-capability jump: the app goes from "you must remember to sync" to "it just works in the background."<br>
 
