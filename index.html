@@ -1638,56 +1638,71 @@ async function _autoCloudPullOnOpen(name) {
     const localData = sessions[name];
     const localSavedAt = localData?.savedAt || 0;
     const cloudSavedAt = cloudData.savedAt || 0;
-    if (localData && localSavedAt >= cloudSavedAt) { _setCloudStatus('synced'); return false; } // local already current
+    // Whether the *metadata* itself is stale locally. This does NOT decide
+    // whether to fetch audio below — audio bytes are never persisted locally
+    // between sessions (see the constraint noted in the plan doc), so a
+    // reopened piece always starts with zero audio in memory regardless of
+    // whether its metadata happens to already be current. Gating the audio
+    // fetch on metadata-freshness was the original bug: on the same device,
+    // local savedAt is never behind (you're the one who pushed it), so audio
+    // was never re-fetched after a reload — the person always had to
+    // re-attach the file by hand.
+    const metadataIsNewer = !localData || cloudSavedAt > localSavedAt;
 
-    _setCloudStatus('pulling');
-    const { libraries, collections } = await window.cloudFetchLibrariesAndCollections();
-    Object.keys(libraries || {}).forEach(id => { if (!sessions.__libraries__[id]) sessions.__libraries__[id] = libraries[id]; });
-    Object.keys(collections || {}).forEach(id => { if (!sessions.__collections__[id]) sessions.__collections__[id] = collections[id]; });
+    if (metadataIsNewer) {
+      _setCloudStatus('pulling');
+      const { libraries, collections } = await window.cloudFetchLibrariesAndCollections();
+      Object.keys(libraries || {}).forEach(id => { if (!sessions.__libraries__[id]) sessions.__libraries__[id] = libraries[id]; });
+      Object.keys(collections || {}).forEach(id => { if (!sessions.__collections__[id]) sessions.__collections__[id] = collections[id]; });
 
-    sessions[name] = {
-      pieceName: cloudData.pieceName || name,
-      audioFileName: cloudData.audioFileName || '',
-      audioDuration: cloudData.audioDuration || 0,
-      markers: cloudData.markers || [],
-      markerIdCounter: cloudData.markerIdCounter || 0,
-      segments: cloudData.segments || [],
-      segmentIdCounter: cloudData.segmentIdCounter || 0,
-      notes: cloudData.notes || '',
-      competence: cloudData.competence || null,
-      targetDate: cloudData.targetDate || null,
-      libraryId: cloudData.libraryId || null,
-      collectionIds: Array.isArray(cloudData.collectionIds) ? cloudData.collectionIds : [],
-      savedAt: cloudSavedAt
-    };
-    const order = sessions.__order__ || [];
-    if (!order.includes(name)) order.push(name);
-    sessions.__order__ = order;
-    await saveSessionsToStorage(sessions);
+      sessions[name] = {
+        pieceName: cloudData.pieceName || name,
+        audioFileName: cloudData.audioFileName || '',
+        audioDuration: cloudData.audioDuration || 0,
+        markers: cloudData.markers || [],
+        markerIdCounter: cloudData.markerIdCounter || 0,
+        segments: cloudData.segments || [],
+        segmentIdCounter: cloudData.segmentIdCounter || 0,
+        notes: cloudData.notes || '',
+        competence: cloudData.competence || null,
+        targetDate: cloudData.targetDate || null,
+        libraryId: cloudData.libraryId || null,
+        collectionIds: Array.isArray(cloudData.collectionIds) ? cloudData.collectionIds : [],
+        savedAt: cloudSavedAt
+      };
+      const order = sessions.__order__ || [];
+      if (!order.includes(name)) order.push(name);
+      sessions.__order__ = order;
+      await saveSessionsToStorage(sessions);
 
-    // Re-apply to the actively-displayed state (this resolves after
-    // loadNamedSession's own initial read, so the newer data needs
-    // re-applying here rather than waiting for the next piece switch)
-    if (currentPieceName === name) {
-      markers = sessions[name].markers;
-      markerIdCounter = sessions[name].markerIdCounter;
-      segments = _migrateStatusLabels(sessions[name].segments);
-      segmentIdCounter = sessions[name].segmentIdCounter;
-      currentPieceCompetence = sessions[name].competence;
-      currentPieceTargetDate = sessions[name].targetDate;
-      audioFileName = sessions[name].audioFileName;
-      const notesEl = document.getElementById('piece-notes');
-      if (notesEl) notesEl.value = sessions[name].notes || '';
-      renderMarkers(); renderSegments(); refreshSegmentDropdowns(); renderSessionsList();
+      // Re-apply to the actively-displayed state (this resolves after
+      // loadNamedSession's own initial read, so the newer data needs
+      // re-applying here rather than waiting for the next piece switch)
+      if (currentPieceName === name) {
+        markers = sessions[name].markers;
+        markerIdCounter = sessions[name].markerIdCounter;
+        segments = _migrateStatusLabels(sessions[name].segments);
+        segmentIdCounter = sessions[name].segmentIdCounter;
+        currentPieceCompetence = sessions[name].competence;
+        currentPieceTargetDate = sessions[name].targetDate;
+        audioFileName = sessions[name].audioFileName;
+        const notesEl = document.getElementById('piece-notes');
+        if (notesEl) notesEl.value = sessions[name].notes || '';
+        renderMarkers(); renderSegments(); refreshSegmentDropdowns(); renderSessionsList();
+      }
+    } else {
+      _setCloudStatus('synced');
     }
 
+    // Always attempt the audio fetch if the cloud has a path for it, whether
+    // or not the metadata itself needed pulling — see comment above.
     let audioLoaded = false;
     if (cloudData.audioStoragePath) {
       const blob = await window.cloudFetchAudioBlob(cloudData.audioStoragePath);
       if (blob) {
         const file = new File([blob], cloudData.audioFileName || 'audio', { type: blob.type || 'audio/mpeg' });
         _loadingFromCloud = true;
-        onAudioFile(file);
+        await onAudioFile(file); // wait for decode (and its auto-upload check) to finish before clearing the guard
         _loadingFromCloud = false;
         audioLoaded = true;
       }
@@ -1757,8 +1772,14 @@ function _updatePieceTitle() {
   _updateCloudSyncMenuItem();
 }
 
+// Returns a Promise that resolves once the async decode (waveform, duration,
+// etc.) has actually finished. Callers that need to know decode is truly done
+// (e.g. the cloud-pull path, which needs to reset _loadingFromCloud only
+// AFTER the decode-triggered auto-upload check has run) should await this.
+// Fire-and-forget callers (the plain file-picker onchange) can ignore the
+// returned promise exactly as before — nothing about their behavior changes.
 function onAudioFile(file) {
-  if (!file) return;
+  if (!file) return Promise.resolve();
   audioFileName = file.name;
   currentAudioFile = file;
   _updateNoFileNotice();
@@ -1779,37 +1800,44 @@ function onAudioFile(file) {
   audioEl.load();
 
   // Decode via AudioContext for waveform rendering + trim detection
-  const reader = new FileReader();
-  reader.onload = async ev => {
-    try {
-      if (!audioContext) audioContext = new (window.AudioContext||window.webkitAudioContext)();
-      const raw = await audioContext.decodeAudioData(ev.target.result.slice(0));
-      const { buffer: trimmed, offsetSecs } = trimEdges(raw);
-      audioBuffer  = trimmed;
-      trimOffset   = offsetSecs;
-      audioDuration = audioBuffer.duration;
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = async ev => {
+      try {
+        if (!audioContext) audioContext = new (window.AudioContext||window.webkitAudioContext)();
+        const raw = await audioContext.decodeAudioData(ev.target.result.slice(0));
+        const { buffer: trimmed, offsetSecs } = trimEdges(raw);
+        audioBuffer  = trimmed;
+        trimOffset   = offsetSecs;
+        audioDuration = audioBuffer.duration;
 
-      viewStart = 0; viewEnd = audioDuration; zoomLevel = 1;
-      updateZoomLabel();
-      document.getElementById('audio-player').style.display = 'block';
-      _updateNoFileNotice();
-      _updateDisplay(0);
-      buildWaveformCache();
-      drawOverview();
-      if (markers.length === 0) addMarker('1', 'R', 0);
-      else renderMarkers();
-      saveSession(); renderSessionsList();
-      // Auto-upload this audio to the cloud, once, right now — unless this
-      // file just came FROM the cloud itself (pointless to re-upload what
-      // we just downloaded), and only if signed in.
-      if (!_loadingFromCloud && _cloudSignedIn() && currentPieceName) {
-        _pushCloudNow(true);
+        viewStart = 0; viewEnd = audioDuration; zoomLevel = 1;
+        updateZoomLabel();
+        document.getElementById('audio-player').style.display = 'block';
+        _updateNoFileNotice();
+        _updateDisplay(0);
+        buildWaveformCache();
+        drawOverview();
+        if (markers.length === 0) addMarker('1', 'R', 0);
+        else renderMarkers();
+        saveSession(); renderSessionsList();
+        // Auto-upload this audio to the cloud, once, right now — unless this
+        // file just came FROM the cloud itself (pointless to re-upload what
+        // we just downloaded), and only if signed in. Callers that set
+        // _loadingFromCloud must now await the promise this function returns
+        // before clearing that flag, since this callback runs asynchronously
+        // after onAudioFile itself has already returned.
+        if (!_loadingFromCloud && _cloudSignedIn() && currentPieceName) {
+          _pushCloudNow(true);
+        }
+      } catch(err) {
+        alert('Could not decode audio file: ' + err.message);
+      } finally {
+        resolve();
       }
-    } catch(err) {
-      alert('Could not decode audio file: ' + err.message);
-    }
-  };
-  reader.readAsArrayBuffer(file);
+    };
+    reader.readAsArrayBuffer(file);
+  });
 }
 
 function trimEdges(buf) {
@@ -6023,27 +6051,33 @@ window.addEventListener('beforeunload', e => {
     if (!currentUser) return { ok: false, reason: 'not-signed-in' };
     const pieceId = _slugifyPieceId(pieceName);
     try {
-      let audioStoragePath = null;
+      // audioStoragePath is deliberately OMITTED from the write object below
+      // unless this call is actually uploading audio right now. With
+      // { merge: true }, a field that's present (even as null) overwrites
+      // whatever was already stored — so previously this ran on every
+      // metadata-only push (the vast majority of pushes) and clobbered a
+      // real, previously-uploaded path back to null a few seconds after
+      // every attach. Omitting the key entirely means merge leaves the
+      // existing Firestore value untouched when there's no new audio file.
+      const pieceDoc = { ...pieceData, syncedAt: Date.now() };
+      let audioUploaded = false;
       if (audioFile) {
         const storagePath = `users/${currentUser.uid}/audio/${pieceId}`;
         await uploadBytes(ref(storage, storagePath), audioFile);
-        audioStoragePath = storagePath;
+        pieceDoc.audioStoragePath = storagePath;
+        audioUploaded = true;
       }
       await setDoc(doc(db, 'users', currentUser.uid), {
         email: currentUser.email || null,
         displayName: currentUser.displayName || null,
         lastSyncedAt: Date.now()
       }, { merge: true });
-      await setDoc(doc(db, 'users', currentUser.uid, 'pieces', pieceId), {
-        ...pieceData,
-        audioStoragePath,
-        syncedAt: Date.now()
-      }, { merge: true });
+      await setDoc(doc(db, 'users', currentUser.uid, 'pieces', pieceId), pieceDoc, { merge: true });
       await setDoc(doc(db, 'users', currentUser.uid, 'organization', 'libraries'),
         { libraries: libraries || {} }, { merge: true });
       await setDoc(doc(db, 'users', currentUser.uid, 'organization', 'collections'),
         { collections: collections || {} }, { merge: true });
-      return { ok: true, audioUploaded: !!audioFile };
+      return { ok: true, audioUploaded };
     } catch(e) {
       console.error('Cloud sync failed:', e);
       return { ok: false, reason: 'error', error: e };
