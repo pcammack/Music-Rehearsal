@@ -659,7 +659,7 @@ input[type=file]{display:none}
 <header>
   <div style="display:flex;align-items:center">
     <span class="app-name">Rehearsal Space</span>
-    <span class="app-ver">v9.2</span>
+    <span class="app-ver">v9.5</span>
   </div>
 </header>
 
@@ -970,6 +970,14 @@ input[type=file]{display:none}
       <span id="collection-filter-wrap" style="margin-left:auto"></span>
     </div>
     <div id="sessions-list"><span class="lib-empty">No pieces saved yet.</span></div>
+    <div class="lib-manage-toggle" id="archived-pieces-toggle" onclick="toggleArchivedPiecesPanel()">📦 Archived pieces (0)</div>
+    <div id="archived-pieces-panel" style="display:none">
+      <div id="archived-pieces-list"></div>
+    </div>
+    <div class="lib-manage-toggle" id="storage-usage-toggle" onclick="toggleStorageUsagePanel()">📊 Storage usage</div>
+    <div id="storage-usage-panel" style="display:none">
+      <div id="storage-usage-list"></div>
+    </div>
     <!-- Add new piece -->
     <div class="lib-new-piece-form">
       <input class="lib-new-input" id="new-piece-input"
@@ -990,6 +998,12 @@ input[type=file]{display:none}
     <div class="collapsible-body" id="docs-body">
       <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v9.0</span>
 
+      <div class="doc-h">WHAT'S NEW IN v9.5</div>
+      · <strong style="color:var(--text)">New: Archive pieces, and manage cloud storage space.</strong> A "📦" button next to each piece now archives it — it disappears from the active library, but every bit of data (markers, notes, passages, competence, target date) stays fully intact, browsable anytime under the new "📦 Archived pieces" panel, with an "↩" to restore it. Archiving moves the piece's cloud doc to a separate `archivedPieces` collection (so browsing Firestore directly cleanly separates archived from active) and never touches its synced audio either way. Separately, a new "📊 Storage usage" panel lists every synced audio file with its size, largest first, with a "🗑" per file to free up just that Storage space — clears the audio from the cloud (and the pointer to it) while leaving every bit of metadata completely untouched; useful for staying under a Storage plan's limit without losing any markup.<br>
+      <div class="doc-h">WHAT'S NEW IN v9.4</div>
+      · <strong style="color:var(--text)">Fixed: deleting (or renaming) a piece left it orphaned in the cloud.</strong> Same family of bug as v9.3's library/collection fix, but with a sharper edge: since a piece's cloud identity is just a slugified version of its name (not a "deleted" flag), an undeleted cloud doc/audio file could silently resurface — if a piece was deleted and a new one later created with the same name, or a piece was renamed and something else later reused the old name, opening it would pull in the OLD piece's markers/audio as if they belonged to the "new" one. Deleting or renaming a piece now also removes its old Firestore doc and Storage audio file (best-effort; the local action always stands regardless of whether the cloud cleanup succeeds).<br>
+      <div class="doc-h">WHAT'S NEW IN v9.3</div>
+      · <strong style="color:var(--text)">Fixed: deleting a library or collection didn't remove it from the cloud.</strong> Deletion only ever updated local storage — the Firestore registry still had the entry, and since cloud sync merges by name (as of v9.2), the next pull would see "no local entry with this name" and silently re-import the deleted library/collection from the cloud, undoing the deletion. Both delete actions now also remove the specific entry from the cloud registry (best-effort — the local delete always stands even if this part fails, e.g. offline).<br>
       <div class="doc-h">WHAT'S NEW IN v9.2</div>
       · <strong style="color:var(--text)">Fixed: libraries/collections doubled across devices.</strong> Every browser bootstraps its own default libraries ("Solo", "Ensemble", "Jazz", "Pop") the first time it's ever opened, each with its own random id. Cloud sync was merging these registries by id, not by name — so a second device's differently-id'd "Solo" showed up as a second, separate "Solo" instead of being recognized as the same library, compounding with every device used. Cloud pull now reconciles by name: if a local library/collection with the same name already exists, the cloud copy isn't imported as a duplicate — pieces referencing it are transparently re-pointed to the existing local entry instead. A new "🧹 Merge duplicate libraries/collections" item in the ⋯ menu is available as a one-time manual cleanup for anyone who already accumulated duplicates before this fix — safe to run per-browser, re-points affected pieces before removing the duplicate entries, never touches piece data itself.<br>
       <div class="doc-h">WHAT'S NEW IN v9.1</div>
@@ -1241,6 +1255,7 @@ function _ensureLibrariesInitialized(sessions) {
     const s = sessions[k];
     if (s.libraryId === undefined) s.libraryId = null;
     if (!Array.isArray(s.collectionIds)) s.collectionIds = [];
+    if (s.archived === undefined) s.archived = false;
   });
   return migrated;
 }
@@ -1297,6 +1312,12 @@ async function deleteLibrary(id) {
   delete sessions.__libraries__[id];
   await saveSessionsToStorage(sessions);
   renderSessionsList();
+  // Best-effort: also remove it from the cloud registry so it doesn't come
+  // back on a future pull (see cloudDeleteLibrary's comment). The local
+  // deletion above already stands regardless of whether this succeeds.
+  if (_cloudSignedIn() && typeof window.cloudDeleteLibrary === 'function') {
+    window.cloudDeleteLibrary(id);
+  }
 }
 
 async function setPieceLibrary(name, libId) {
@@ -1437,6 +1458,12 @@ async function deleteCollectionPermanently(id) {
   if (collectionFilter === id) collectionFilter = '';
   await saveSessionsToStorage(sessions);
   renderSessionsList();
+  // Best-effort: also remove it from the cloud registry so it doesn't come
+  // back on a future pull (see cloudDeleteCollection's comment). The local
+  // deletion above already stands regardless of whether this succeeds.
+  if (_cloudSignedIn() && typeof window.cloudDeleteCollection === 'function') {
+    window.cloudDeleteCollection(id);
+  }
 }
 
 async function togglePieceCollection(name, colId) {
@@ -3286,6 +3313,131 @@ async function loadNamedSession(name, opts = {}) {
   }
 }
 
+let showStorageUsage = false;
+function toggleStorageUsagePanel() {
+  showStorageUsage = !showStorageUsage;
+  const panel = document.getElementById('storage-usage-panel');
+  if (panel) panel.style.display = showStorageUsage ? '' : 'none';
+  renderStorageUsagePanel();
+}
+
+// Mirrors _slugifyPieceId in the Firebase module script (kept in sync by
+// comment cross-reference) — needed here only to translate a Storage
+// filename back into a readable piece name for display.
+function _slugForPieceMatch(name) {
+  return (name || '').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 120) || 'piece';
+}
+
+async function renderStorageUsagePanel() {
+  const el = document.getElementById('storage-usage-list');
+  if (!el || !showStorageUsage) return;
+  if (!_cloudSignedIn()) { el.innerHTML = '<span class="lib-empty">Sign in to view cloud storage usage.</span>'; return; }
+  if (typeof window.cloudGetStorageUsage !== 'function') { el.innerHTML = '<span class="lib-empty">Not available.</span>'; return; }
+  el.innerHTML = '<span class="lib-empty">Loading…</span>';
+  const usage = await window.cloudGetStorageUsage();
+  if (!usage.ok) { el.innerHTML = '<span class="lib-empty">Could not load storage usage — try again in a moment.</span>'; return; }
+
+  const sessions = await loadSessionsFromStorage();
+  const idToName = {};
+  Object.keys(sessions).filter(k => !_isMetaKey(k)).forEach(k => {
+    idToName[_slugForPieceMatch(sessions[k].pieceName || k)] = sessions[k].pieceName || k;
+  });
+
+  const sorted = [...usage.files].sort((a, b) => b.bytes - a.bytes);
+  const totalMB = (usage.totalBytes / 1048576).toFixed(1);
+  const header = `<div class="lib-meta" style="padding:0.3rem 0 0.5rem">Total synced audio: ${totalMB} MB across ${sorted.length} piece${sorted.length!==1?'s':''}</div>`;
+
+  if (!sorted.length) { el.innerHTML = header + '<span class="lib-empty">No synced audio yet.</span>'; return; }
+
+  const rows = sorted.map(f => {
+    const name = idToName[f.pieceId] || f.pieceId;
+    const safe = escHtml(name);
+    const safeJs = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const mb = (f.bytes / 1048576).toFixed(1);
+    return `<div class="lib-row" style="cursor:default">
+      <div class="lib-row-left"><span class="lib-name">${safe}</span></div>
+      <div class="lib-row-right" style="gap:0.5rem">
+        <span class="lib-date">${mb} MB</span>
+        <button class="lib-del" title="Free up space — deletes only the cloud audio; markers, notes, and history stay exactly as they are" onclick="freeUpPieceAudioSpace('${safeJs}')">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+  el.innerHTML = header + rows;
+}
+
+async function freeUpPieceAudioSpace(name) {
+  if (!confirm(`Free up cloud storage space for "${name}"?\n\nThis deletes only the synced audio file. Markers, notes, passages, and history are completely untouched. You'll just need to reattach the mp3 locally next time you want to play it.`)) return;
+  if (typeof window.cloudFreeUpAudioSpace !== 'function') return;
+  const result = await window.cloudFreeUpAudioSpace(name);
+  if (!result.ok) { alert('Could not free up space right now — try again in a moment.'); return; }
+  renderStorageUsagePanel();
+}
+
+async function archivePiece(name) {
+  const sessions = await loadSessionsFromStorage();
+  if (!sessions[name]) return;
+  if (!confirm(`Archive "${name}"? It'll disappear from your active library but everything — markers, notes, passages, history — stays intact. Find it again anytime under "📦 Archived pieces". This doesn't touch its synced audio either way.`)) return;
+  sessions[name].archived = true;
+  await saveSessionsToStorage(sessions);
+  renderSessionsList();
+  // Best-effort: move the cloud copy to a separate archivedPieces collection,
+  // so browsing Firestore/Storage directly also cleanly separates archived
+  // from active — doesn't touch the Storage audio file either way.
+  if (_cloudSignedIn() && typeof window.cloudArchivePiece === 'function') {
+    window.cloudArchivePiece(name);
+  }
+}
+
+async function unarchivePiece(name) {
+  const sessions = await loadSessionsFromStorage();
+  if (!sessions[name]) return;
+  sessions[name].archived = false;
+  await saveSessionsToStorage(sessions);
+  renderSessionsList();
+  if (_cloudSignedIn() && typeof window.cloudUnarchivePiece === 'function') {
+    window.cloudUnarchivePiece(name);
+  }
+}
+
+let showArchivedPieces = false;
+function toggleArchivedPiecesPanel() {
+  showArchivedPieces = !showArchivedPieces;
+  const panel = document.getElementById('archived-pieces-panel');
+  if (panel) panel.style.display = showArchivedPieces ? '' : 'none';
+  renderArchivedPiecesList();
+}
+
+async function renderArchivedPiecesList() {
+  const toggleBtn = document.getElementById('archived-pieces-toggle');
+  const el = document.getElementById('archived-pieces-list');
+  const sessions = await loadSessionsFromStorage();
+  const archivedKeys = Object.keys(sessions).filter(k => !_isMetaKey(k) && sessions[k].archived)
+    .sort((a, b) => a.localeCompare(b));
+  if (toggleBtn) toggleBtn.textContent = `📦 Archived pieces (${archivedKeys.length})`;
+  if (!el || !showArchivedPieces) return;
+  if (!archivedKeys.length) {
+    el.innerHTML = `<span class="lib-empty">No archived pieces.</span>`;
+    return;
+  }
+  el.innerHTML = archivedKeys.map(name => {
+    const safe = escHtml(name);
+    const safeJs = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const s = sessions[name];
+    const mc = (s.markers || []).length;
+    const sc = (s.segments || []).length;
+    return `<div class="lib-row" style="cursor:default">
+      <div class="lib-row-left">
+        <span class="lib-name">${safe}</span>
+        <span class="lib-meta">${mc} mark${mc!==1?'s':''} · ${sc} passage${sc!==1?'s':''}</span>
+      </div>
+      <div class="lib-row-right" style="gap:0.3rem">
+        <button class="lib-del" title="Restore to active library" onclick="unarchivePiece('${safeJs}')">↩</button>
+        <button class="lib-del" title="Delete permanently — cannot be undone" onclick="deleteNamedSession('${safeJs}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 async function deleteNamedSession(name) {
   if (!confirm(`Delete "${name}" from library?`)) return;
   const sessions = await loadSessionsFromStorage();
@@ -3295,6 +3447,12 @@ async function deleteNamedSession(name) {
   delete sessions[name];
   await saveSessionsToStorage(sessions);
   renderSessionsList();
+  // Best-effort: also remove this piece's Firestore doc and Storage audio
+  // (see cloudDeletePiece's comment for why this matters) — local deletion
+  // above already stands regardless of whether this succeeds.
+  if (_cloudSignedIn() && typeof window.cloudDeletePiece === 'function') {
+    window.cloudDeletePiece(name);
+  }
 }
 
 async function renameSession(oldName) {
@@ -3318,6 +3476,16 @@ async function renameSession(oldName) {
   }
   await saveSessionsToStorage(sessions);
   renderSessionsList();
+  // Best-effort: the cloud doc/audio (if any) is keyed by the OLD name's
+  // slug — left alone, it'd sit there orphaned with the same resurrection
+  // risk as an undeleted piece (see cloudDeletePiece's comment): if a
+  // different piece is ever later created or renamed to reuse that old
+  // name, opening it would silently pull in this piece's old data. The
+  // piece's cloud presence under the NEW name gets (re)created normally the
+  // next time it's opened/edited, same as any newly-created piece.
+  if (_cloudSignedIn() && typeof window.cloudDeletePiece === 'function') {
+    window.cloudDeletePiece(oldName);
+  }
 }
 
 let _dragSrcName = null;
@@ -3465,6 +3633,7 @@ function _renderPieceRow(name, s, sessions) {
       ${targetDateHtml}
       <span class="lib-drag-handle" title="Drag to reorder">⠿</span>
       <span class="lib-date">${date}</span>
+      <button class="lib-del" onclick="event.stopPropagation();archivePiece('${safeJs}')" title="Archive — keeps all data, just hides from the active library">📦</button>
       <button class="lib-del" onclick="event.stopPropagation();deleteNamedSession('${safeJs}')" title="Remove">✕</button>
     </div>
   </div>`;
@@ -3479,7 +3648,7 @@ async function renderSessionsList() {
     if (btn) btn.classList.toggle('active', m === libSort);
   });
 
-  const allKeys = Object.keys(sessions).filter(k => !_isMetaKey(k));
+  const allKeys = Object.keys(sessions).filter(k => !_isMetaKey(k) && !sessions[k].archived);
   const storedOrder = sessions.__order__ || [];
   let orderedKeys = [
     ...storedOrder.filter(k => allKeys.includes(k)),
@@ -3529,6 +3698,7 @@ async function renderSessionsList() {
 
   renderLibraryManager();
   renderCollectionManager();
+  renderArchivedPiecesList();
 
   if (!orderedKeys.length) {
     el.innerHTML = `<span class="lib-empty">${collectionFilter ? 'No pieces in this collection.' : 'No pieces saved yet.'}</span>`;
@@ -6059,10 +6229,10 @@ window.addEventListener('beforeunload', e => {
     getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
   } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
   import {
-    getFirestore, doc, setDoc, getDoc
+    getFirestore, doc, setDoc, getDoc, updateDoc, deleteField, deleteDoc
   } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
   import {
-    getStorage, ref, uploadBytes, getDownloadURL
+    getStorage, ref, uploadBytes, getDownloadURL, deleteObject, listAll, getMetadata
   } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-storage.js";
 
   const firebaseConfig = {
@@ -6218,6 +6388,153 @@ window.addEventListener('beforeunload', e => {
     } catch(e) {
       console.error('Cloud organization fetch failed:', e);
       return { libraries: {}, collections: {} };
+    }
+  };
+
+  // Removes a single library/collection entry from the cloud registry doc,
+  // by field path (not a whole-document write), so it doesn't silently come
+  // back on a future pull — merge-based writes only ever add/update fields,
+  // they never remove one, so a plain local delete alone isn't enough: the
+  // next pull-and-reconcile-by-name would see "no local entry with this
+  // name" and re-import the cloud's copy, undoing the deletion. Best-effort:
+  // if this fails (offline, not signed in, etc.) the LOCAL delete the caller
+  // already did still stands; this only prevents the cloud from bringing it
+  // back later.
+  // Removes a piece's cloud footprint entirely: its Firestore doc and its
+  // Storage audio file, if any. Needed because piece identity is just a
+  // slugified name, not a "deleted" flag — without this, deleting a piece
+  // and later creating a new one with the same name would silently pull the
+  // OLD piece's audio/markers back in on first open (the audio-fetch logic
+  // fetches whenever the cloud has a path, regardless of freshness — see
+  // _autoCloudPullOnOpen — so a lingering old doc would look exactly like
+  // a legitimate cloud copy of the "new" same-named piece).
+  // Moves a piece's Firestore doc from pieces/{id} to archivedPieces/{id} (a
+  // separate top-level collection, so browsing Firestore directly cleanly
+  // separates archived from active). Never touches the Storage audio file —
+  // archiving is purely organizational; freeing up audio space is a
+  // deliberate separate action (see cloudFreeUpAudioSpace below).
+  window.cloudArchivePiece = async function(pieceName) {
+    if (!currentUser) return { ok: false, reason: 'not-signed-in' };
+    const pieceId = _slugifyPieceId(pieceName);
+    try {
+      const srcRef = doc(db, 'users', currentUser.uid, 'pieces', pieceId);
+      const snap = await getDoc(srcRef);
+      if (snap.exists()) {
+        await setDoc(doc(db, 'users', currentUser.uid, 'archivedPieces', pieceId), { ...snap.data(), archivedAt: Date.now() });
+        await deleteDoc(srcRef);
+      }
+      return { ok: true };
+    } catch(e) {
+      console.warn('Cloud archive failed:', e);
+      return { ok: false, reason: 'error', error: e };
+    }
+  };
+
+  window.cloudUnarchivePiece = async function(pieceName) {
+    if (!currentUser) return { ok: false, reason: 'not-signed-in' };
+    const pieceId = _slugifyPieceId(pieceName);
+    try {
+      const srcRef = doc(db, 'users', currentUser.uid, 'archivedPieces', pieceId);
+      const snap = await getDoc(srcRef);
+      if (snap.exists()) {
+        const data = { ...snap.data() };
+        delete data.archivedAt;
+        await setDoc(doc(db, 'users', currentUser.uid, 'pieces', pieceId), data);
+        await deleteDoc(srcRef);
+      }
+      return { ok: true };
+    } catch(e) {
+      console.warn('Cloud unarchive failed:', e);
+      return { ok: false, reason: 'error', error: e };
+    }
+  };
+
+  // Lists every synced audio file under this user's Storage folder with its
+  // size, for the "📊 Storage usage" view. Pure client-side SDK calls —
+  // nothing billing/admin-API related needed, just ordinary Storage reads
+  // against the user's own folder (same access already used for playback).
+  window.cloudGetStorageUsage = async function() {
+    if (!currentUser) return { ok: false, reason: 'not-signed-in', files: [], totalBytes: 0 };
+    try {
+      const folderRef = ref(storage, `users/${currentUser.uid}/audio`);
+      const listing = await listAll(folderRef);
+      const files = await Promise.all(listing.items.map(async itemRef => {
+        const meta = await getMetadata(itemRef);
+        return { pieceId: itemRef.name, bytes: meta.size || 0 };
+      }));
+      const totalBytes = files.reduce((sum, f) => sum + f.bytes, 0);
+      return { ok: true, files, totalBytes };
+    } catch(e) {
+      console.warn('Storage usage fetch failed:', e);
+      return { ok: false, reason: 'error', error: e, files: [], totalBytes: 0 };
+    }
+  };
+
+  // Deletes just the Storage audio file for a piece and clears its
+  // audioStoragePath in Firestore — every other field (markers, notes,
+  // segments, competence, etc.) is completely untouched. The next time this
+  // piece is opened, it'll simply prompt for the local file again, same as
+  // any piece whose audio hasn't been attached yet this session.
+  window.cloudFreeUpAudioSpace = async function(pieceName) {
+    if (!currentUser) return { ok: false, reason: 'not-signed-in' };
+    const pieceId = _slugifyPieceId(pieceName);
+    try {
+      await deleteObject(ref(storage, `users/${currentUser.uid}/audio/${pieceId}`));
+    } catch(e) {
+      if (e?.code !== 'storage/object-not-found') {
+        console.warn('Free-up-space Storage delete failed:', e);
+        return { ok: false, reason: 'error', error: e };
+      }
+    }
+    try {
+      await updateDoc(doc(db, 'users', currentUser.uid, 'pieces', pieceId), { audioStoragePath: null });
+    } catch(e) {
+      console.warn('Free-up-space Firestore clear failed:', e);
+    }
+    return { ok: true };
+  };
+
+  window.cloudDeletePiece = async function(pieceName) {
+    if (!currentUser) return { ok: false, reason: 'not-signed-in' };
+    const pieceId = _slugifyPieceId(pieceName);
+    try {
+      await deleteDoc(doc(db, 'users', currentUser.uid, 'pieces', pieceId));
+    } catch(e) {
+      console.warn('Cloud piece doc delete failed:', e);
+    }
+    try {
+      await deleteObject(ref(storage, `users/${currentUser.uid}/audio/${pieceId}`));
+    } catch(e) {
+      // storage/object-not-found is the common, expected case (piece had no
+      // synced audio) — not worth warning about; anything else is worth logging.
+      if (e?.code !== 'storage/object-not-found') console.warn('Cloud audio delete failed:', e);
+    }
+    return { ok: true };
+  };
+
+  window.cloudDeleteLibrary = async function(libId) {
+    if (!currentUser) return { ok: false, reason: 'not-signed-in' };
+    try {
+      await updateDoc(doc(db, 'users', currentUser.uid, 'organization', 'libraries'), {
+        [`libraries.${libId}`]: deleteField()
+      });
+      return { ok: true };
+    } catch(e) {
+      console.warn('Cloud library delete failed (local delete still stands):', e);
+      return { ok: false, reason: 'error', error: e };
+    }
+  };
+
+  window.cloudDeleteCollection = async function(colId) {
+    if (!currentUser) return { ok: false, reason: 'not-signed-in' };
+    try {
+      await updateDoc(doc(db, 'users', currentUser.uid, 'organization', 'collections'), {
+        [`collections.${colId}`]: deleteField()
+      });
+      return { ok: true };
+    } catch(e) {
+      console.warn('Cloud collection delete failed (local delete still stands):', e);
+      return { ok: false, reason: 'error', error: e };
     }
   };
 
