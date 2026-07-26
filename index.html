@@ -377,16 +377,8 @@ input[type=file]{display:none}
 .status-dot.evolving{background:var(--green);border-color:var(--green)}
 .status-dot.stable{background:var(--accent);border-color:var(--accent)}
 .status-dot.fluent{background:var(--green);border-color:var(--green)}
-.lib-competence-dot{width:9px;height:9px;border-radius:50%;border:1px solid var(--border-l);cursor:pointer;flex-shrink:0;transition:all 0.15s;display:inline-block;vertical-align:middle}
-.lib-competence-dot:hover{transform:scale(1.3)}
-.lib-competence-dot.learning{background:var(--red);border-color:var(--red)}
-.lib-competence-dot.playing{background:var(--accent);border-color:var(--accent)}
-.lib-competence-dot.evolving{background:var(--green);border-color:var(--green)}
-.lib-target-date{font-size:0.38rem;color:var(--text-faint);cursor:pointer;padding:0.05rem 0.25rem;border:1px solid transparent;transition:all 0.15s;white-space:nowrap;font-family:'JetBrains Mono',monospace}
-.lib-target-date:hover{border-color:var(--border);color:var(--text-mid)}
-.lib-target-date.has-date{color:var(--accent)}
-.lib-date-input{background:var(--bg3);border:1px solid var(--accent);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:0.38rem;padding:0.05rem 0.2rem;outline:none;display:none}
-.lib-date-input.visible{display:inline-block}
+
+
 .lib-sort-bar{display:flex;align-items:center;gap:0.4rem;padding:0.3rem 0.5rem;border-bottom:1px solid var(--border);margin-bottom:0.2rem}
 .lib-sort-label{font-size:0.38rem;color:var(--text-faint);letter-spacing:0.08em;white-space:nowrap}
 .lib-sort-btn{background:none;border:1px solid var(--border);color:var(--text-faint);font-family:'JetBrains Mono',monospace;font-size:0.38rem;padding:0.08rem 0.35rem;cursor:pointer;transition:all 0.15s;white-space:nowrap}
@@ -412,6 +404,19 @@ input[type=file]{display:none}
   overflow:hidden;text-overflow:ellipsis}
 .lib-cat-select:hover{border-color:var(--border);color:var(--text-mid)}
 .lib-cat-select:focus{border-color:var(--accent);color:var(--text)}
+/* performance-level select on lib row (replaces the old click-to-cycle dot) */
+.lib-competence-select{background:var(--bg3);border:1px solid transparent;color:var(--text-faint);
+  font-family:'JetBrains Mono',monospace;font-size:0.38rem;padding:0.04rem 0.2rem;
+  cursor:pointer;outline:none;transition:all 0.15s;width:76px;flex-shrink:0}
+.lib-competence-select:hover{border-color:var(--border);color:var(--text-mid)}
+.lib-competence-select:focus{border-color:var(--accent);color:var(--text)}
+/* full-row level tint — same pattern as passage/segment rows (.loop-row.status-*) */
+.lib-row.status-learning{background:color-mix(in srgb,var(--red) 8%,var(--bg2))!important}
+.lib-row.status-playing{background:color-mix(in srgb,var(--accent) 8%,var(--bg2))!important}
+.lib-row.status-evolving{background:color-mix(in srgb,var(--green) 8%,var(--bg2))!important}
+.lib-row.status-learning:hover{background:color-mix(in srgb,var(--red) 14%,var(--bg2))!important}
+.lib-row.status-playing:hover{background:color-mix(in srgb,var(--accent) 14%,var(--bg2))!important}
+.lib-row.status-evolving:hover{background:color-mix(in srgb,var(--green) 14%,var(--bg2))!important}
 /* library select in new-piece form */
 .lib-new-select{background:var(--bg3);border:1px solid var(--border);
   color:var(--text);font-family:'JetBrains Mono',monospace;font-size:0.46rem;
@@ -550,6 +555,7 @@ input[type=file]{display:none}
 .lib-status-reload{color:var(--accent)}
 .lib-row-right{display:flex;align-items:center;gap:0.5rem}
 .lib-date{font-size:0.4rem;color:var(--text-faint)}
+.lib-date.stale{color:var(--red)}
 .lib-drag-handle{color:var(--text-faint);font-size:0.6rem;cursor:grab;padding:0 0.2rem;opacity:0.5}
 .lib-drag-handle:hover{opacity:1}
 .lib-del{background:none;border:none;color:var(--text-faint);cursor:pointer;
@@ -618,6 +624,9 @@ input[type=file]{display:none}
   text-transform:uppercase;color:var(--text-faint)}
 .collapsible-body{display:none;font-size:0.52rem;color:var(--text-faint);
   border-top:1px solid var(--border);padding-top:0.5rem;padding-bottom:0.6rem}
+.collapse-arrow{cursor:pointer;color:var(--text-faint);font-size:0.5rem;
+  user-select:none;padding:0 0.1rem;line-height:1}
+.collapse-arrow:hover{color:var(--text)}
 
 /* ── TIPS ── */
 .tips{font-size:0.46rem;color:var(--text-faint);line-height:2.2;
@@ -659,7 +668,7 @@ input[type=file]{display:none}
 <header>
   <div style="display:flex;align-items:center">
     <span class="app-name">Rehearsal Space</span>
-    <span class="app-ver">v9.5</span>
+    <span class="app-ver">v9.6</span>
   </div>
 </header>
 
@@ -731,8 +740,12 @@ input[type=file]{display:none}
       <div class="loop-panel">
         <div class="section-divider">
           <span>Passages</span>
-          <span id="loop-count" style="color:var(--accent)">0 passages</span>
+          <div style="display:flex;align-items:center;gap:0.5rem">
+            <span id="loop-count" style="color:var(--accent)">0 passages</span>
+            <span class="collapse-arrow" id="passages-arrow" onclick="toggleSection('passages')" title="Collapse/expand">▾</span>
+          </div>
         </div>
+        <div id="passages-body" style="display:block">
         <div class="loop-add-row">
           <select class="seg-select" id="seg-start"><option value="">Start…</option></select>
           <span style="color:var(--text-faint);font-size:0.6rem">→</span>
@@ -749,20 +762,26 @@ input[type=file]{display:none}
           <span></span><span>★</span><span>Name</span><span>Span</span><span>Dur</span><span>▶</span><span>⟳</span><span>T</span><span>●</span><span>✕</span>
         </div>
         <div id="seg-list"></div>
+        </div>
       </div>
 
       <!-- Woodshed (Tempo Training — appears when passage active) -->
       <div class="tempo-train-panel" id="tempo-train-panel">
         <div class="section-divider">
           <span>Woodshed</span>
-          <button class="btn-sm" onclick="closeTempoTraining()" style="font-size:0.4rem;padding:0.1rem 0.35rem">✕</button>
+          <div style="display:flex;align-items:center;gap:0.5rem">
+            <span class="collapse-arrow" id="woodshed-arrow" onclick="toggleSection('woodshed')" title="Collapse/expand">▾</span>
+            <button class="btn-sm" onclick="closeTempoTraining()" style="font-size:0.4rem;padding:0.1rem 0.35rem">✕</button>
+          </div>
         </div>
+        <div id="woodshed-body" style="display:block">
         <div class="tempo-train-stops" id="tempo-train-stops"></div>
         <div class="tempo-train-controls">
           <button class="btn-sm primary" id="tt-start-btn" onclick="tempoTrainStart()">▶ Start</button>
           <button class="btn-sm" id="tt-pause-btn" onclick="tempoTrainPause()" style="display:none">⏸ Pause</button>
           <button class="btn-sm" id="tt-stop-btn" onclick="tempoTrainStop()" style="display:none">■ Stop</button>
           <span class="tempo-train-status" id="tt-status"></span>
+        </div>
         </div>
       </div>
 
@@ -780,8 +799,10 @@ input[type=file]{display:none}
                 onclick="setMarkMode('all')">All</button>
             </div>
             <span id="marker-count" style="color:var(--accent)">0 marks</span>
+            <span class="collapse-arrow" id="marks-arrow" onclick="toggleSection('marks')" title="Collapse/expand">▾</span>
           </div>
         </div>
+        <div id="marks-body" style="display:block">
         <div class="marker-col-header" id="marker-col-header">
           <span>#</span><span>Label</span>
           <span>Time</span>
@@ -796,6 +817,7 @@ input[type=file]{display:none}
           <button class="btn-sm" onclick="addMarkAtTime()" style="font-size:0.4rem;padding:0.1rem 0.4rem">+ Mark</button>
           <span style="font-size:0.38rem;color:var(--text-faint)">(<span id="mark-time-mode-hint" style="color:var(--accent)">S</span>)</span>
         </div>
+        </div>
       </div>
     </div>
 
@@ -806,7 +828,9 @@ input[type=file]{display:none}
       <div class="right-panel">
         <div class="section-divider">
           <span>Notes</span>
+          <span class="collapse-arrow" id="notes-arrow" onclick="toggleSection('notes')" title="Collapse/expand">▾</span>
         </div>
+        <div id="notes-body" style="display:block">
         <div class="intention-bar" id="intention-bar">
           <span class="intention-label">Today's intention</span>
           <input class="intention-input" id="intention-input" type="text"
@@ -820,12 +844,18 @@ input[type=file]{display:none}
         <textarea class="universal-notes-textarea" id="universal-notes"
           placeholder="Observations that apply across all pieces…"
           oninput="onUniversalNotesInput()"></textarea>
+        </div>
       </div>
 
       <!-- Session log (auto-generated) -->
       <div class="right-panel" id="session-log-panel" style="display:none">
-        <div class="section-divider"><span>Last session</span></div>
+        <div class="section-divider">
+          <span>Last session</span>
+          <span class="collapse-arrow" id="session-log-arrow" onclick="toggleSection('session-log')" title="Collapse/expand">▾</span>
+        </div>
+        <div id="session-log-body" style="display:block">
         <div class="session-log" id="session-log-content"></div>
+        </div>
       </div>
 
       <!-- Takes (recording panel) -->
@@ -839,8 +869,10 @@ input[type=file]{display:none}
               <span class="rec-timer" id="rec-timer">0:00</span>
             </div>
             <span class="rec-scope" id="rec-scope"></span>
+            <span class="collapse-arrow" id="takes-arrow" onclick="toggleSection('takes')" title="Collapse/expand">▾</span>
           </div>
         </div>
+        <div id="takes-body" style="display:block">
         <div class="level-meter-wrap" id="level-meter-wrap">
           <span class="level-meter-label">mic</span>
           <div class="level-meter-track"><div class="level-meter-bar" id="level-meter-bar"></div></div>
@@ -889,6 +921,7 @@ input[type=file]{display:none}
             <div id="cal-history" style="font-size:0.4rem;color:var(--text-faint);line-height:1.9;margin-top:0.2rem"></div>
           </div>
         </div>
+        </div>
       </div>
 
       <!-- Keyboard reference (collapsible) -->
@@ -934,15 +967,14 @@ input[type=file]{display:none}
     <div class="library-hdr">
       <span class="library-title">Repertoire</span>
       <div class="hdr-menu-wrap">
+        <span class="collapse-arrow" id="library-arrow" onclick="toggleSection('library')" title="Collapse/expand">▾</span>
         <button class="hdr-menu-btn" id="tools-menu-btn" onclick="toggleHdrMenu('tools')" title="Backup and advanced options">⋯</button>
         <div class="hdr-dropdown" id="tools-menu">
           <button class="hdr-dropdown-item" onclick="exportLibraryJSON();closeHdrMenus()">↓ Download backup</button>
           <label class="hdr-dropdown-item" style="cursor:pointer" for="import-json-input">↑ Restore from file</label>
           <input type="file" id="import-json-input" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" onchange="importLibraryJSON(this.files[0]);closeHdrMenus()">
-          <div class="hdr-dropdown-label" id="cloud-sync-label" style="display:none">Cloud</div>
           <button class="hdr-dropdown-item" id="cloud-force-btn" onclick="forceCloudSyncNow()" style="display:none">↻ Sync now (manual)</button>
           <button class="hdr-dropdown-item" onclick="mergeDuplicateLibrariesAndCollections()">🧹 Merge duplicate libraries/collections</button>
-          <div class="hdr-dropdown-label">Advanced</div>
           <label class="hdr-dropdown-item" style="cursor:pointer" for="piece-txt-input">↑ Load notes from .txt</label>
           <input type="file" id="piece-txt-input" accept=".txt,text/plain" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" onchange="manualLoadPieceTxt(this.files[0]);closeHdrMenus()">
           <button class="hdr-dropdown-item" onclick="folderBannerAction();closeHdrMenus()" id="folder-menu-action">Connect local folder</button>
@@ -950,6 +982,7 @@ input[type=file]{display:none}
         </div>
       </div>
     </div>
+    <div id="library-body" style="display:block">
     <!-- Import feedback -->
     <div class="import-notice" id="import-notice"></div>
     <!-- Library/Collection management — tucked behind a deliberate toggle,
@@ -966,7 +999,6 @@ input[type=file]{display:none}
       <span class="lib-sort-label">Sort:</span>
       <button class="lib-sort-btn active" id="lib-sort-alpha" onclick="setLibSort('alpha')">A–Z</button>
       <button class="lib-sort-btn" id="lib-sort-competence" onclick="setLibSort('competence')">By level</button>
-      <button class="lib-sort-btn" id="lib-sort-date" onclick="setLibSort('date')">By target date</button>
       <span id="collection-filter-wrap" style="margin-left:auto"></span>
     </div>
     <div id="sessions-list"><span class="lib-empty">No pieces saved yet.</span></div>
@@ -988,6 +1020,7 @@ input[type=file]{display:none}
         style="display:none" onchange="onNewPieceAudio(this.files[0])">
       <button class="btn-sm primary" onclick="addNewPiece()">+ Add</button>
     </div>
+    </div>
   </div>
 
   <!-- Documentation -->
@@ -998,6 +1031,12 @@ input[type=file]{display:none}
     <div class="collapsible-body" id="docs-body">
       <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v9.0</span>
 
+      <div class="doc-h">WHAT'S NEW IN v9.6</div>
+      · <strong style="color:var(--text)">Archiving now frees up the synced audio automatically.</strong> That was the whole point of archiving — it no longer requires a separate manual step in "📊 Storage usage." Restoring an archived piece still works exactly as before; you'll just need to reattach the mp3.<br>
+      · <strong style="color:var(--text)">Performance level is now a dropdown, and it tints the whole row.</strong> Same idea as passage rows: pick Learning/Playing/Evolving from a proper dropdown instead of clicking a tiny dot to cycle through it, and the piece's row in the library now tints with that level's color so it's visible at a glance.<br>
+      · <strong style="color:var(--text)">New: a last-practiced marker on every piece.</strong> Shows how recently a piece was touched, and turns red after 14 days as a nudge to get back to it.<br>
+      · <strong style="color:var(--text)">Every panel except the main player is now collapsible.</strong> Passages, Woodshed, Rehearsal marks, Notes, Last session, Takes, and the Repertoire panel can all be collapsed — state is remembered across reloads.<br>
+      · Removed the "Cloud" and "Advanced" section labels from the ⋯ menu — self-explanatory either way.<br>
       <div class="doc-h">WHAT'S NEW IN v9.5</div>
       · <strong style="color:var(--text)">New: Archive pieces, and manage cloud storage space.</strong> A "📦" button next to each piece now archives it — it disappears from the active library, but every bit of data (markers, notes, passages, competence, target date) stays fully intact, browsable anytime under the new "📦 Archived pieces" panel, with an "↩" to restore it. Archiving moves the piece's cloud doc to a separate `archivedPieces` collection (so browsing Firestore directly cleanly separates archived from active) and never touches its synced audio either way. Separately, a new "📊 Storage usage" panel lists every synced audio file with its size, largest first, with a "🗑" per file to free up just that Storage space — clears the audio from the cloud (and the pointer to it) while leaving every bit of metadata completely untouched; useful for staying under a Storage plan's limit without losing any markup.<br>
       <div class="doc-h">WHAT'S NEW IN v9.4</div>
@@ -1162,9 +1201,9 @@ let undoStack = [];
 const UNDO_MAX = 50;
 
 let currentPieceCompetence = null;
-let currentPieceTargetDate = null;
 const LIB_SORT_KEY = 'rs_lib_sort_v1';
 let libSort = localStorage.getItem(LIB_SORT_KEY) || 'alpha';
+if (libSort === 'date') libSort = 'alpha'; // 'by target date' removed — fall back cleanly
 
 // ══════════════════════════════════════════════
 // LIBRARIES + COLLECTIONS
@@ -1610,12 +1649,33 @@ function escHtml(s) {
 }
 function isPlaceholder(label) { const t = String(label).trim(); return t === '.' || t === ''; }
 
+const SECTION_COLLAPSED_KEY = 'rs_section_collapsed_v1';
+function _getSectionCollapsed() {
+  try { return JSON.parse(localStorage.getItem(SECTION_COLLAPSED_KEY) || '{}'); } catch(e) { return {}; }
+}
+function _setSectionCollapsed(obj) {
+  try { localStorage.setItem(SECTION_COLLAPSED_KEY, JSON.stringify(obj)); } catch(e) {}
+}
 function toggleSection(id) {
   const body = document.getElementById(`${id}-body`);
   const arrow = document.getElementById(`${id}-arrow`);
   const open = body.style.display === 'block';
   body.style.display = open ? 'none' : 'block';
   arrow.textContent = open ? '▸' : '▾';
+  const collapsed = _getSectionCollapsed();
+  collapsed[id] = open; // becomes collapsed (true) if it was open
+  _setSectionCollapsed(collapsed);
+}
+// Applies persisted collapse state on load. defaultCollapsed is used the
+// first time a section is ever seen (no stored preference yet).
+function _restoreSectionCollapse(id, defaultCollapsed) {
+  const body = document.getElementById(`${id}-body`);
+  const arrow = document.getElementById(`${id}-arrow`);
+  if (!body || !arrow) return;
+  const collapsed = _getSectionCollapsed();
+  const isCollapsed = (id in collapsed) ? collapsed[id] : defaultCollapsed;
+  body.style.display = isCollapsed ? 'none' : 'block';
+  arrow.textContent = isCollapsed ? '▸' : '▾';
 }
 
 // ── Header dropdown menu: single consolidated ⋯ menu ──
@@ -1668,17 +1728,16 @@ function _setCloudStatus(state) {
 }
 
 function _updateCloudSyncMenuItem() {
-  const label = document.getElementById('cloud-sync-label');
   const btn = document.getElementById('cloud-force-btn');
   const badge = document.getElementById('cloud-status-badge');
-  if (!label || !btn) return;
+  if (!btn) return;
   const user = _cloudSignedIn();
   if (!user) {
-    label.style.display = 'none'; btn.style.display = 'none';
+    btn.style.display = 'none';
     if (badge) badge.style.display = 'none';
     return;
   }
-  label.style.display = ''; btn.style.display = '';
+  btn.style.display = '';
   btn.disabled = !currentPieceName;
   btn.style.opacity = currentPieceName ? '' : '0.4';
 }
@@ -1698,7 +1757,6 @@ async function _assembleCloudPieceData(pieceName, sessions) {
     segmentIdCounter: s.segmentIdCounter || segmentIdCounter || 0,
     notes: document.getElementById('piece-notes')?.value ?? (s.notes || ''),
     competence: s.competence || null,
-    targetDate: s.targetDate || null,
     libraryId: s.libraryId || null,
     collectionIds: Array.isArray(s.collectionIds) ? s.collectionIds : [],
     savedAt: s.savedAt || Date.now()
@@ -1797,7 +1855,6 @@ async function _autoCloudPullOnOpen(name) {
         segmentIdCounter: cloudData.segmentIdCounter || 0,
         notes: cloudData.notes || '',
         competence: cloudData.competence || null,
-        targetDate: cloudData.targetDate || null,
         libraryId: cloudData.libraryId ? (libIdTranslate[cloudData.libraryId] || cloudData.libraryId) : null,
         collectionIds: Array.isArray(cloudData.collectionIds) ? cloudData.collectionIds.map(cid => colIdTranslate[cid] || cid) : [],
         savedAt: cloudSavedAt
@@ -1816,7 +1873,6 @@ async function _autoCloudPullOnOpen(name) {
         segments = _migrateStatusLabels(sessions[name].segments);
         segmentIdCounter = sessions[name].segmentIdCounter;
         currentPieceCompetence = sessions[name].competence;
-        currentPieceTargetDate = sessions[name].targetDate;
         audioFileName = sessions[name].audioFileName;
         const notesEl = document.getElementById('piece-notes');
         if (notesEl) notesEl.value = sessions[name].notes || '';
@@ -3138,7 +3194,6 @@ function _autosaveToLibrary() {
         segments: segments.map(s => ({...s})),
         markerIdCounter, segmentIdCounter,
         competence: currentPieceCompetence,
-        targetDate: currentPieceTargetDate,
         notes: document.getElementById('piece-notes')
           ? document.getElementById('piece-notes').value : '',
         savedAt: Date.now()
@@ -3165,7 +3220,6 @@ function loadSession() {
       segmentIdCounter = Math.max(s.segmentIdCounter||0, ...segments.map(s=>s.id+1));
     }
     currentPieceCompetence = s.competence || null;
-    currentPieceTargetDate = s.targetDate || null;
     if (s.notes) document.getElementById('piece-notes').value = s.notes;
     loadIntention();
     if (s.audioFileName) {
@@ -3235,7 +3289,6 @@ async function addNewPiece() {
   segments = []; segmentIdCounter = 0;
   audioFileName = ''; audioDuration = 0;
   currentPieceCompetence = null;
-  currentPieceTargetDate = null;
   document.getElementById('piece-notes').value = '';
   _updatePieceTitle();
   renderMarkers(); renderLoops(); refreshSegmentDropdowns();
@@ -3283,7 +3336,6 @@ async function loadNamedSession(name, opts = {}) {
   segments = _migrateStatusLabels(s.segments||[]);
   segmentIdCounter = Math.max(s.segmentIdCounter||0, ...(segments.length?segments.map(x=>x.id+1):[0]));
   currentPieceCompetence = s.competence || null;
-  currentPieceTargetDate = s.targetDate || null;
   audioFileName = s.audioFileName||'';
   document.getElementById('piece-notes').value = s.notes || '';
 
@@ -3376,15 +3428,17 @@ async function freeUpPieceAudioSpace(name) {
 async function archivePiece(name) {
   const sessions = await loadSessionsFromStorage();
   if (!sessions[name]) return;
-  if (!confirm(`Archive "${name}"? It'll disappear from your active library but everything — markers, notes, passages, history — stays intact. Find it again anytime under "📦 Archived pieces". This doesn't touch its synced audio either way.`)) return;
+  if (!confirm(`Archive "${name}"? It'll disappear from your active library but everything — markers, notes, passages, history — stays intact. Find it again anytime under "📦 Archived pieces". Its synced audio will be removed to free up cloud storage space; you'll just need to reattach the mp3 if you ever restore it.`)) return;
   sessions[name].archived = true;
   await saveSessionsToStorage(sessions);
   renderSessionsList();
   // Best-effort: move the cloud copy to a separate archivedPieces collection,
   // so browsing Firestore/Storage directly also cleanly separates archived
-  // from active — doesn't touch the Storage audio file either way.
-  if (_cloudSignedIn() && typeof window.cloudArchivePiece === 'function') {
-    window.cloudArchivePiece(name);
+  // from active — and free up the synced audio, since that's the whole point
+  // of archiving a piece (it's not meant to be played without restoring it).
+  if (_cloudSignedIn()) {
+    if (typeof window.cloudArchivePiece === 'function') window.cloudArchivePiece(name);
+    if (typeof window.cloudFreeUpAudioSpace === 'function') window.cloudFreeUpAudioSpace(name);
   }
 }
 
@@ -3493,59 +3547,38 @@ let _dragSrcName = null;
 function setLibSort(mode) {
   libSort = mode;
   localStorage.setItem(LIB_SORT_KEY, mode);
-  ['alpha','competence','date'].forEach(m => {
+  ['alpha','competence'].forEach(m => {
     const btn = document.getElementById('lib-sort-' + m);
     if (btn) btn.classList.toggle('active', m === mode);
   });
   renderSessionsList();
 }
 
-async function cyclePieceCompetence(name, e) {
-  e.stopPropagation();
+async function setPieceCompetence(name, val) {
   const sessions = await loadSessionsFromStorage();
   if (!sessions[name]) return;
-  const cycle = { null: 'learning', learning: 'playing', playing: 'evolving', evolving: null };
-  const cur = sessions[name].competence || null;
-  sessions[name].competence = (cur in cycle) ? cycle[cur] : 'learning';
+  sessions[name].competence = val || null;
   if (name === currentPieceName) currentPieceCompetence = sessions[name].competence;
   await saveSessionsToStorage(sessions);
   renderSessionsList();
 }
 
-async function setPieceTargetDate(name, val) {
-  const sessions = await loadSessionsFromStorage();
-  if (!sessions[name]) return;
-  sessions[name].targetDate = val || null;
-  if (name === currentPieceName) currentPieceTargetDate = sessions[name].targetDate || null;
-  await saveSessionsToStorage(sessions);
-  renderSessionsList();
-}
-
-function _showDateInput(name) {
-  const safeId = name.replace(/[^a-zA-Z0-9_-]/g, '_');
-  const inp = document.getElementById('lib-date-inp-' + safeId);
-  const badge = document.getElementById('lib-date-badge-' + safeId);
-  if (!inp || !badge) return;
-  inp.classList.add('visible');
-  badge.style.display = 'none';
-  inp.focus();
-}
-
-function _hideDateInput(name, val) {
-  setPieceTargetDate(name, val);
-}
-
-function _fmtTargetDate(iso) {
-  if (!iso) return null;
-  try {
-    const [y, m, d] = iso.split('-');
-    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-    return months[parseInt(m)-1] + ' ' + parseInt(d);
-  } catch(e) { return iso; }
+// Last-practiced marker — a quick reminder of which pieces have gone quiet.
+// "Practiced" currently means "any save," which includes note edits as well
+// as actual playing; stale (14+ days) pieces are flagged in red as a nudge.
+function _fmtLastPracticed(savedAt) {
+  if (!savedAt) return { text: 'never practiced', stale: false, title: 'Never practiced' };
+  const days = Math.floor((Date.now() - savedAt) / 86400000);
+  let text;
+  if (days <= 0) text = 'practiced today';
+  else if (days === 1) text = 'practiced yesterday';
+  else if (days < 14) text = `practiced ${days}d ago`;
+  else text = 'practiced ' + new Date(savedAt).toLocaleDateString(undefined,{month:'short',day:'numeric'});
+  return { text, stale: days >= 14, title: 'Last practiced: ' + new Date(savedAt).toLocaleString() };
 }
 
 function _renderPieceRow(name, s, sessions) {
-  const date = s.savedAt ? new Date(s.savedAt).toLocaleDateString(undefined,{month:'short',day:'numeric'}) : '';
+  const lastPracticed = _fmtLastPracticed(s.savedAt);
   const mc = s.markers?s.markers.length:0, sc = s.segments?s.segments.length:0;
   const safe = escHtml(name);
   const safeId = name.replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -3558,22 +3591,16 @@ function _renderPieceRow(name, s, sessions) {
         : `<span class="lib-status-reload">○ needs file</span>`)
     : '';
   const comp = s.competence || null;
-  const compDot = `<span class="lib-competence-dot${comp?' '+comp:''}"
-    onclick="cyclePieceCompetence('${safeJs}',event)"
-    title="${comp?'Level: '+comp+' — click to change':'No level — click to set'}"
-    style="${!comp?'background:transparent;border-color:var(--border);opacity:0.5':''}"></span>`;
-  const td = s.targetDate || null;
-  const tdDisplay = _fmtTargetDate(td);
-  const targetDateHtml = `<span id="lib-date-badge-${safeId}"
-      class="lib-target-date${td?' has-date':''}"
-      onclick="event.stopPropagation();_showDateInput('${safeJs}')"
-      title="${td?'Target: '+td+' — click to change':'Set target date'}"
-    >${td?tdDisplay:'+ date'}</span>
-    <input type="date" id="lib-date-inp-${safeId}"
-      class="lib-date-input" value="${td||''}"
-      onclick="event.stopPropagation()"
-      onchange="event.stopPropagation();_hideDateInput('${safeJs}',this.value)"
-      onblur="event.stopPropagation();_hideDateInput('${safeJs}',this.value)">`;
+  const rowStatusClass = comp ? ` status-${comp}` : '';
+  const compSelect = `<select class="lib-competence-select"
+    onclick="event.stopPropagation()"
+    onchange="event.stopPropagation();setPieceCompetence('${safeJs}',this.value)"
+    title="Performance level">
+    <option value=""${!comp?' selected':''}>— level —</option>
+    <option value="learning"${comp==='learning'?' selected':''}>Learning</option>
+    <option value="playing"${comp==='playing'?' selected':''}>Playing</option>
+    <option value="evolving"${comp==='evolving'?' selected':''}>Evolving</option>
+  </select>`;
   // Library select — sourced from the __libraries__ registry (id-referenced,
   // so renaming a library never desyncs this dropdown). Color-coded per
   // library so you can tell a piece's library at a glance without reading it.
@@ -3611,7 +3638,7 @@ function _renderPieceRow(name, s, sessions) {
         }).join('')}
       </div>
     </span>` : '';
-  return `<div class="lib-row${isActive?' active':''}"
+  return `<div class="lib-row${isActive?' active':''}${rowStatusClass}"
       data-name="${safe}" draggable="true"
       onclick="loadNamedSession('${safeJs}')"
       ondragstart="libDragStart(event,'${safeJs}')"
@@ -3620,19 +3647,16 @@ function _renderPieceRow(name, s, sessions) {
       ondragleave="libDragLeave(event)"
       ondragend="libDragEnd(event)">
     <div class="lib-row-left">
-      <span style="display:flex;align-items:center;gap:0.35rem">
-        ${compDot}
-        <span class="lib-name" ondblclick="event.stopPropagation();renameSession('${safeJs}')"
-          title="Double-click to rename">${safe}</span>
-      </span>
+      <span class="lib-name" ondblclick="event.stopPropagation();renameSession('${safeJs}')"
+        title="Double-click to rename">${safe}</span>
       <span class="lib-meta">${mc} mark${mc!==1?'s':''} · ${sc} passage${sc!==1?'s':''} ${statusHtml}</span>
       ${collectionDotsHtml}${collectionAddHtml}
     </div>
     <div class="lib-row-right" style="gap:0.3rem">
+      ${compSelect}
       ${libSelect}
-      ${targetDateHtml}
       <span class="lib-drag-handle" title="Drag to reorder">⠿</span>
-      <span class="lib-date">${date}</span>
+      <span class="lib-date${lastPracticed.stale?' stale':''}" title="${lastPracticed.title}">🕓 ${lastPracticed.text}</span>
       <button class="lib-del" onclick="event.stopPropagation();archivePiece('${safeJs}')" title="Archive — keeps all data, just hides from the active library">📦</button>
       <button class="lib-del" onclick="event.stopPropagation();deleteNamedSession('${safeJs}')" title="Remove">✕</button>
     </div>
@@ -3643,7 +3667,7 @@ async function renderSessionsList() {
   const sessions = await loadSessionsFromStorage();
   const el = document.getElementById('sessions-list');
 
-  ['alpha','competence','date'].forEach(m => {
+  ['alpha','competence'].forEach(m => {
     const btn = document.getElementById('lib-sort-' + m);
     if (btn) btn.classList.toggle('active', m === libSort);
   });
@@ -3663,14 +3687,6 @@ async function renderSessionsList() {
       const ra = competenceRank[sessions[a]?.competence || 'null'] ?? 3;
       const rb = competenceRank[sessions[b]?.competence || 'null'] ?? 3;
       return ra !== rb ? ra - rb : a.localeCompare(b);
-    });
-  } else if (libSort === 'date') {
-    orderedKeys = [...orderedKeys].sort((a, b) => {
-      const da = sessions[a]?.targetDate || '';
-      const db = sessions[b]?.targetDate || '';
-      if (!da && !db) return a.localeCompare(b);
-      if (!da) return 1; if (!db) return -1;
-      return da.localeCompare(db);
     });
   }
 
@@ -6203,6 +6219,18 @@ _renderCalHistory();
 _initAutoResize('piece-notes');
 _initAutoResize('universal-notes');
 _refreshNewPieceLibrarySelect();
+// Collapsible sections — all windows except the main player/waveform.
+// Primary working panels default OPEN; reference/rarely-used panels default collapsed.
+_restoreSectionCollapse('library', false);
+_restoreSectionCollapse('passages', false);
+_restoreSectionCollapse('woodshed', false);
+_restoreSectionCollapse('marks', false);
+_restoreSectionCollapse('notes', false);
+_restoreSectionCollapse('session-log', false);
+_restoreSectionCollapse('takes', false);
+_restoreSectionCollapse('kbd', true);
+_restoreSectionCollapse('docs', true);
+_restoreSectionCollapse('latency-cal', true);
 window.addEventListener('resize', drawOverview);
 
 // Warn before closing if unsaved clips exist
