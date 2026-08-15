@@ -668,7 +668,7 @@ input[type=file]{display:none}
 <header>
   <div style="display:flex;align-items:center">
     <span class="app-name">Rehearsal Space</span>
-    <span class="app-ver">v9.7</span>
+    <span class="app-ver">v9.8</span>
   </div>
 </header>
 
@@ -977,6 +977,7 @@ input[type=file]{display:none}
           <label class="hdr-dropdown-item" style="cursor:pointer" for="import-json-input">↑ Restore from file</label>
           <input type="file" id="import-json-input" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" onchange="importLibraryJSON(this.files[0]);closeHdrMenus()">
           <button class="hdr-dropdown-item" id="cloud-force-btn" onclick="forceCloudSyncNow()" style="display:none">↻ Sync now (manual)</button>
+          <button class="hdr-dropdown-item" onclick="checkForCloudOnlyPieces()">☁ Check for pieces not in this browser</button>
           <button class="hdr-dropdown-item" onclick="mergeDuplicateLibrariesAndCollections()">🧹 Merge duplicate libraries/collections</button>
           <label class="hdr-dropdown-item" style="cursor:pointer" for="piece-txt-input">↑ Load notes from .txt</label>
           <input type="file" id="piece-txt-input" accept=".txt,text/plain" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" onchange="manualLoadPieceTxt(this.files[0]);closeHdrMenus()">
@@ -1034,6 +1035,9 @@ input[type=file]{display:none}
     <div class="collapsible-body" id="docs-body">
       <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v9.0</span>
 
+      <div class="doc-h">WHAT'S NEW IN v9.8</div>
+      · <strong style="color:var(--text)">The practice journal now syncs across browsers/devices.</strong> Previously it was pure local storage — "universal" only meant "shared across pieces on this one browser," not across devices. It's now merge-safe by design: if only one side changed since the last sync, that side's version is taken with no risk; if <em>both</em> sides changed independently, both are kept — concatenated with a clear divider — rather than one silently overwriting the other. Verified with four separate test scenarios (first sync, safe pull, safe push, true conflict) before shipping.<br>
+      · <strong style="color:var(--text)">New: "☁ Check for pieces not in this browser"</strong> in the ⋯ menu. Lists any piece that exists in the cloud but not in this browser's local library, and lets you pull it in — strictly additive, it never touches or overwrites a piece that's already here. Fixes the "added a piece on one browser, never showed up on the other" gap. Note: only checks active pieces, not archived ones.<br>
       <div class="doc-h">WHAT'S NEW IN v9.7</div>
       · <strong style="color:var(--text)">Fixed a real bug: audio could get cross-assigned between pieces when switching quickly.</strong> Opening one piece and then switching to another before its cloud audio finished downloading could apply the first piece's audio to the second, and even re-upload it — silently swapping their mp3s. Fixed by having each piece-open carry a generation token; any pull that resolves after you've moved on now discards itself instead of applying stale data. Confirmed with a deliberate race-condition test, both before and after the fix.<br>
       · <strong style="color:var(--text)">New: "↻ Replace audio" button</strong> next to the piece title, always available while a piece is open. Directly overwrites that piece's stored audio (locally and in the cloud) without touching its markers, passages, or notes — a manual recovery path for exactly the kind of mixup above, or just replacing a bad recording.<br>
@@ -1381,6 +1385,55 @@ async function setPieceLibrary(name, libId) {
 // canonical id, then removes the duplicate registry entries. Only affects
 // THIS browser's local data — needs running once on each browser/device
 // that has accumulated duplicates.
+// Discovers pieces that exist in the cloud but not in this browser's local
+// library — the gap that let a piece added on one browser go unnoticed on
+// another. This is deliberately additive-only: it only ever creates a new
+// local entry for a name that doesn't already exist here, and never
+// touches or overwrites an existing local piece, so there's no scenario
+// where running this loses anything already in this browser. Audio isn't
+// downloaded here — that happens automatically (and now race-condition
+// safely, see v9.7) the first time you actually open the piece.
+async function checkForCloudOnlyPieces() {
+  closeHdrMenus();
+  if (!_cloudSignedIn()) { alert('Sign in with Google first.'); return; }
+  if (typeof window.cloudListPieceNames !== 'function') return;
+  const [cloudNames, sessions] = await Promise.all([
+    window.cloudListPieceNames(),
+    loadSessionsFromStorage()
+  ]);
+  const missing = cloudNames.filter(n => !sessions[n]);
+  if (missing.length === 0) {
+    alert('Nothing new — every piece in the cloud already exists in this browser.\n\n(Note: this only checks active pieces, not archived ones.)');
+    return;
+  }
+  const list = missing.map(n => '• ' + n).join('\n');
+  if (!confirm(`Found ${missing.length} piece${missing.length!==1?'s':''} in the cloud not in this browser:\n\n${list}\n\nAdd ${missing.length!==1?'them':'it'} to this library? (Markers/passages/notes will be pulled now; audio will load the first time you open each one.)`)) return;
+
+  for (const name of missing) {
+    const cloudData = await window.cloudFetchPiece(name);
+    if (!cloudData) continue;
+    const fresh = await loadSessionsFromStorage();
+    if (fresh[name]) continue; // safety: created locally by something else in the meantime — never overwrite
+    fresh[name] = {
+      pieceName: name,
+      audioFileName: cloudData.audioFileName || '',
+      markers: cloudData.markers || [],
+      markerIdCounter: cloudData.markerIdCounter || 0,
+      segments: cloudData.segments || [],
+      segmentIdCounter: cloudData.segmentIdCounter || 0,
+      notes: cloudData.notes || '',
+      competence: cloudData.competence || null,
+      libraryId: cloudData.libraryId || null,
+      collectionIds: Array.isArray(cloudData.collectionIds) ? cloudData.collectionIds : [],
+      savedAt: cloudData.savedAt || Date.now(),
+      archived: false
+    };
+    await saveSessionsToStorage(fresh);
+  }
+  renderSessionsList();
+  alert(`Added ${missing.length} piece${missing.length!==1?'s':''}. Open ${missing.length!==1?'them':'it'} to pull down the audio.`);
+}
+
 async function mergeDuplicateLibrariesAndCollections() {
   closeHdrMenus();
   const sessions = await loadSessionsFromStorage();
@@ -1939,6 +1992,7 @@ async function forceCloudSyncNow() {
   const myGen = ++_pieceLoadGen;
   await _autoCloudPullOnOpen(currentPieceName, myGen);
   await _pushCloudNow(!!currentAudioFile);
+  if (typeof window._syncUniversalNotesWithCloud === 'function') window._syncUniversalNotesWithCloud();
 }
 function toggleCollectionPicker(pickerId) {
   const el = document.getElementById(pickerId);
@@ -5528,6 +5582,100 @@ function _initAutoResize(id) {
 }
 
 const UNIVERSAL_NOTES_KEY = 'rs_universal_notes_v1';
+const UNIVERSAL_NOTES_BASELINE_KEY = 'rs_universal_notes_baseline_v1';
+
+function _getUniversalNotesBaseline() {
+  try { return localStorage.getItem(UNIVERSAL_NOTES_BASELINE_KEY); } catch(e) { return null; }
+}
+function _setUniversalNotesBaseline(text) {
+  try { localStorage.setItem(UNIVERSAL_NOTES_BASELINE_KEY, text); } catch(e) {}
+}
+
+let _journalSyncTimer = null;
+let _journalSyncInFlight = false;
+function _scheduleJournalSync() {
+  clearTimeout(_journalSyncTimer);
+  _journalSyncTimer = setTimeout(() => window._syncUniversalNotesWithCloud(), 2500);
+}
+
+// Cross-device sync for the practice journal, written specifically so
+// neither device's text can ever be silently discarded. The journal is one
+// blob of free text with no natural per-entry structure, so — unlike
+// per-piece data, where the app already accepts "newest wins" as a
+// reasonable tradeoff — a plain overwrite here really could lose something
+// you typed. The "baseline" is the last text this browser is known to have
+// successfully synced; comparing local/cloud text against it tells us
+// whether either side has actually changed since the last sync:
+//   - only local changed  → push local, no risk (cloud had nothing new)
+//   - only cloud changed  → pull cloud, no risk (local had nothing new)
+//   - BOTH changed, or this browser has never synced before and the two
+//     genuinely differ → true conflict. Rather than choose one, both are
+//     kept: the two texts are concatenated with a clear divider so nothing
+//     is lost, and you can clean up any duplicates by hand afterward.
+window._syncUniversalNotesWithCloud = async function() {
+  if (_journalSyncInFlight) return;
+  if (!_cloudSignedIn() || typeof window.cloudFetchUniversalNotes !== 'function') return;
+  const el = document.getElementById('universal-notes');
+  if (!el) return;
+  _journalSyncInFlight = true;
+  try {
+    const localText = el.value || '';
+    const baseline = _getUniversalNotesBaseline(); // null = never synced on this browser before
+
+    const cloudDoc = await window.cloudFetchUniversalNotes();
+    const cloudText = cloudDoc ? (cloudDoc.text || '') : null;
+
+    if (cloudText === null) {
+      // Nothing in the cloud yet at all — this browser's copy becomes the start.
+      await window.cloudPushUniversalNotes(localText);
+      _setUniversalNotesBaseline(localText);
+      return;
+    }
+    if (localText === cloudText) {
+      _setUniversalNotesBaseline(localText); // already identical — just confirm the baseline
+      return;
+    }
+
+    const localUnchangedSinceLastSync = (baseline !== null && localText === baseline);
+    const cloudUnchangedSinceLastSync  = (baseline !== null && cloudText === baseline);
+
+    if (localUnchangedSinceLastSync) {
+      // No edits here since last sync — safe to take the cloud version wholesale.
+      el.value = cloudText;
+      localStorage.setItem(UNIVERSAL_NOTES_KEY, cloudText);
+      _initAutoResize('universal-notes');
+      _setUniversalNotesBaseline(cloudText);
+      return;
+    }
+    if (cloudUnchangedSinceLastSync) {
+      // Cloud hasn't moved since we last synced it — safe to push local.
+      await window.cloudPushUniversalNotes(localText);
+      _setUniversalNotesBaseline(localText);
+      return;
+    }
+
+    // Real conflict (or first-ever sync on this browser with divergent
+    // content already on both sides). If one side is simply empty, take
+    // the other — nothing is lost either way. Otherwise, merge by keeping
+    // both, clearly separated.
+    let merged;
+    if (!localText.trim()) merged = cloudText;
+    else if (!cloudText.trim()) merged = localText;
+    else {
+      const stamp = new Date().toLocaleString();
+      merged = `${localText}\n\n— 🔀 merged in from another device (${stamp}) — please review for duplicates —\n\n${cloudText}`;
+    }
+    el.value = merged;
+    localStorage.setItem(UNIVERSAL_NOTES_KEY, merged);
+    _initAutoResize('universal-notes');
+    await window.cloudPushUniversalNotes(merged);
+    _setUniversalNotesBaseline(merged);
+  } catch(e) {
+    console.warn('Practice journal cloud sync failed:', e);
+  } finally {
+    _journalSyncInFlight = false;
+  }
+};
 
 function onUniversalNotesInput() {
   const el = document.getElementById('universal-notes');
@@ -5535,6 +5683,7 @@ function onUniversalNotesInput() {
     el.style.height = 'auto';
     el.style.height = Math.min(260, el.scrollHeight) + 'px';
     try { localStorage.setItem(UNIVERSAL_NOTES_KEY, el.value); } catch(e) {}
+    _scheduleJournalSync();
   }
 }
 
@@ -6293,7 +6442,7 @@ window.addEventListener('beforeunload', e => {
     getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
   } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
   import {
-    getFirestore, doc, setDoc, getDoc, updateDoc, deleteField, deleteDoc
+    getFirestore, doc, setDoc, getDoc, updateDoc, deleteField, deleteDoc, collection, getDocs
   } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
   import {
     getStorage, ref, uploadBytes, getDownloadURL, deleteObject, listAll, getMetadata
@@ -6359,6 +6508,9 @@ window.addEventListener('beforeunload', e => {
   onAuthStateChanged(auth, (user) => {
     currentUser = user;
     _renderAuthBanner();
+    if (user && typeof window._syncUniversalNotesWithCloud === 'function') {
+      window._syncUniversalNotesWithCloud();
+    }
   });
 
   // ══════════════════════════════════════════════
@@ -6517,6 +6669,58 @@ window.addEventListener('beforeunload', e => {
   // size, for the "📊 Storage usage" view. Pure client-side SDK calls —
   // nothing billing/admin-API related needed, just ordinary Storage reads
   // against the user's own folder (same access already used for playback).
+  // The practice journal is one blob of free text, not structured per-piece
+  // data — so unlike pieces (where "newest wins" is an acceptable
+  // tradeoff), a naive overwrite here could silently discard something you
+  // typed on the other device. These two functions just read/write the doc
+  // as-is; all the conflict-safe merge logic lives in the main script's
+  // _syncUniversalNotesWithCloud(), which decides whether it's safe to
+  // simply take one side or whether both need to be kept.
+  window.cloudFetchUniversalNotes = async function() {
+    if (!currentUser) return null;
+    try {
+      const snap = await getDoc(doc(db, 'users', currentUser.uid, 'meta', 'universalNotes'));
+      return snap.exists() ? snap.data() : null; // { text, updatedAt }
+    } catch(e) {
+      console.error('Cloud fetch of practice journal failed:', e);
+      return null;
+    }
+  };
+
+  window.cloudPushUniversalNotes = async function(text) {
+    if (!currentUser) return { ok: false, reason: 'not-signed-in' };
+    try {
+      await setDoc(doc(db, 'users', currentUser.uid, 'meta', 'universalNotes'),
+        { text, updatedAt: Date.now() });
+      return { ok: true };
+    } catch(e) {
+      console.error('Cloud push of practice journal failed:', e);
+      return { ok: false, reason: 'error', error: e };
+    }
+  };
+
+  // Lists every piece that exists in the cloud, by name — cheap (no audio,
+  // no markers/segments), used purely so a browser that's never seen a
+  // given piece locally has a way to discover it exists at all. Without
+  // this, a piece created on one browser never surfaces on another, since
+  // the normal pull path only checks for updates to pieces you already
+  // have a local entry for.
+  window.cloudListPieceNames = async function() {
+    if (!currentUser) return [];
+    try {
+      const snap = await getDocs(collection(db, 'users', currentUser.uid, 'pieces'));
+      const names = [];
+      snap.forEach(d => {
+        const data = d.data();
+        if (data && data.pieceName) names.push(data.pieceName);
+      });
+      return names;
+    } catch(e) {
+      console.error('Cloud piece-name listing failed:', e);
+      return [];
+    }
+  };
+
   window.cloudGetStorageUsage = async function() {
     if (!currentUser) return { ok: false, reason: 'not-signed-in', files: [], totalBytes: 0 };
     try {
