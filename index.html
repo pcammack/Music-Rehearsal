@@ -668,7 +668,7 @@ input[type=file]{display:none}
 <header>
   <div style="display:flex;align-items:center">
     <span class="app-name">Rehearsal Space</span>
-    <span class="app-ver">v9.10</span>
+    <span class="app-ver">v9.11</span>
   </div>
 </header>
 
@@ -1036,6 +1036,8 @@ input[type=file]{display:none}
     <div class="collapsible-body" id="docs-body">
       <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v9.0</span>
 
+      <div class="doc-h">WHAT'S NEW IN v9.11</div>
+      · <strong style="color:var(--text)">Fixed: the practice journal could miss cross-device updates for an entire session.</strong> Every other synced field gets rechecked against the cloud each time you open a piece; the journal previously only checked at sign-in/page-load, when you typed into it yourself, or via manual "↻ Sync now" — so a browser tab left open (not reloaded) had no way to learn about a journal edit made elsewhere, no matter how many pieces you opened or synced in the meantime. Opening any piece and "☁ Sync all pieces now" now also trigger the journal's existing conflict-safe merge check. No change to the merge logic itself (still safe-pull / safe-push / keep-both-on-conflict, per v9.8) — just added the missing trigger.<br>
       <div class="doc-h">WHAT'S NEW IN v9.10</div>
       · <strong style="color:var(--text)">"📊 Storage usage" is now a full Storage browser.</strong> Every synced audio file shows its size, last-modified date, and — critically — whether any piece actually references it, so you can tell "a piece with audio intentionally freed up" (nothing wrong, by design) apart from "a stray file nothing points to" (safe to clean up). Files not referenced by any piece can be deleted directly. Any file can also be manually assigned to any piece — the direct recovery path for a mixup like the Schubert one, without needing to re-upload anything.<br>
       <div class="doc-h">WHAT'S NEW IN v9.9</div>
@@ -1924,6 +1926,12 @@ async function syncAllPiecesNow() {
   if (names.length === 0) { alert('No active pieces to sync.'); return; }
   if (!confirm(`Sync all ${names.length} piece(s) with the cloud now?\n\nThis pulls any newer cloud metadata (markers, passages, notes, level) for each, and pushes local changes up. Audio isn't part of this bulk pass — it only syncs for whichever piece is currently open, same as always, since audio only exists in memory while a piece is open.`)) return;
 
+  // Bulk sync is an explicit "talk to the cloud now" moment, so also check
+  // the practice journal here — it doesn't otherwise get re-checked mid-session.
+  if (typeof window._syncUniversalNotesWithCloud === 'function') {
+    window._syncUniversalNotesWithCloud().catch(()=>{});
+  }
+
   let changed = 0, pushed = 0, failed = 0;
   for (const name of names) {
     try {
@@ -2011,6 +2019,16 @@ async function _pushCloudNow(includeAudio) {
 // successfully auto-loaded, so the caller can skip the manual file picker.
 async function _autoCloudPullOnOpen(name, myGen) {
   if (typeof window.cloudFetchPiece !== 'function' || !_cloudSignedIn()) return false;
+  // Piece-open is the one moment every session reliably touches the cloud,
+  // so piggyback the practice journal's cross-device check here too — unlike
+  // per-piece data, the journal previously only re-checked the cloud at
+  // sign-in/page-load, on your own typing, or via manual "Sync now". A tab
+  // left open across a whole session had no other way to learn about a
+  // journal edit made elsewhere. Fire-and-forget: journal sync manages its
+  // own conflict-safe merge and must never block or fail piece loading.
+  if (typeof window._syncUniversalNotesWithCloud === 'function') {
+    window._syncUniversalNotesWithCloud().catch(()=>{});
+  }
   try {
     const cloudData = await window.cloudFetchPiece(name);
     // Stale: the person already switched to a different piece while this
