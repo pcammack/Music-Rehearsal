@@ -668,7 +668,7 @@ input[type=file]{display:none}
 <header>
   <div style="display:flex;align-items:center">
     <span class="app-name">Rehearsal Space</span>
-    <span class="app-ver">v9.11</span>
+    <span class="app-ver">v9.12</span>
   </div>
 </header>
 
@@ -1036,6 +1036,8 @@ input[type=file]{display:none}
     <div class="collapsible-body" id="docs-body">
       <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v9.0</span>
 
+      <div class="doc-h">WHAT'S NEW IN v9.12</div>
+      · <strong style="color:var(--text)">Fixed: "☁ Sync all pieces now" could leave the currently-open piece looking stale even when it pulled a real update.</strong> The bulk pull only ever wrote to localStorage — deliberately, since it's built to loop over pieces you're not currently looking at, and never touches live playback state for those. But if the piece it just pulled a newer copy of was the one you had open at the time, the on-screen notes/markers/passages sat unrefreshed until you closed and reopened that piece or reloaded the page — the pulled data was saved correctly, just not visibly reflected. Bulk sync now also refreshes the visible fields when the currently-open piece is the one it just updated.<br>
       <div class="doc-h">WHAT'S NEW IN v9.11</div>
       · <strong style="color:var(--text)">Fixed: the practice journal could miss cross-device updates for an entire session.</strong> Every other synced field gets rechecked against the cloud each time you open a piece; the journal previously only checked at sign-in/page-load, when you typed into it yourself, or via manual "↻ Sync now" — so a browser tab left open (not reloaded) had no way to learn about a journal edit made elsewhere, no matter how many pieces you opened or synced in the meantime. Opening any piece and "☁ Sync all pieces now" now also trigger the journal's existing conflict-safe merge check. No change to the merge logic itself (still safe-pull / safe-push / keep-both-on-conflict, per v9.8) — just added the missing trigger.<br>
       <div class="doc-h">WHAT'S NEW IN v9.10</div>
@@ -1937,7 +1939,29 @@ async function syncAllPiecesNow() {
     try {
       const freshSessions = await loadSessionsFromStorage();
       const didPull = await _bulkPullMetadataOnly(name, freshSessions);
-      if (didPull) { await saveSessionsToStorage(freshSessions); changed++; }
+      if (didPull) {
+        await saveSessionsToStorage(freshSessions);
+        changed++;
+        // _bulkPullMetadataOnly only ever touches localStorage — deliberately,
+        // since it's built to run in a loop over pieces you're NOT currently
+        // looking at (see its own comment above). But if the piece it just
+        // pulled a newer copy of happens to be the one you have open right
+        // now, the on-screen fields would otherwise sit stale until you
+        // close/reopen it or reload — the pulled data is safely saved, just
+        // not visibly reflected. Refresh the visible fields here so a bulk
+        // sync updates what you're looking at too, same as the journal now does.
+        if (name === currentPieceName) {
+          const s = freshSessions[name];
+          markers = s.markers || [];
+          markerIdCounter = Math.max(s.markerIdCounter || 0, ...(markers.length ? markers.map(m => m.id + 1) : [0]));
+          segments = _migrateStatusLabels(s.segments || []);
+          segmentIdCounter = Math.max(s.segmentIdCounter || 0, ...(segments.length ? segments.map(x => x.id + 1) : [0]));
+          currentPieceCompetence = s.competence || null;
+          const notesEl = document.getElementById('piece-notes');
+          if (notesEl) notesEl.value = s.notes || '';
+          renderMarkers(); renderSegments(); refreshSegmentDropdowns();
+        }
+      }
 
       const forPush = await loadSessionsFromStorage();
       const pieceData = await _assembleCloudPieceData(name, forPush);
