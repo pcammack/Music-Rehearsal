@@ -668,7 +668,7 @@ input[type=file]{display:none}
 <header>
   <div style="display:flex;align-items:center">
     <span class="app-name">Rehearsal Space</span>
-    <span class="app-ver">v9.8</span>
+    <span class="app-ver">v9.10</span>
   </div>
 </header>
 
@@ -977,6 +977,7 @@ input[type=file]{display:none}
           <label class="hdr-dropdown-item" style="cursor:pointer" for="import-json-input">↑ Restore from file</label>
           <input type="file" id="import-json-input" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" onchange="importLibraryJSON(this.files[0]);closeHdrMenus()">
           <button class="hdr-dropdown-item" id="cloud-force-btn" onclick="forceCloudSyncNow()" style="display:none">↻ Sync now (manual)</button>
+          <button class="hdr-dropdown-item" onclick="syncAllPiecesNow()">☁ Sync all pieces now</button>
           <button class="hdr-dropdown-item" onclick="checkForCloudOnlyPieces()">☁ Check for pieces not in this browser</button>
           <button class="hdr-dropdown-item" onclick="mergeDuplicateLibrariesAndCollections()">🧹 Merge duplicate libraries/collections</button>
           <label class="hdr-dropdown-item" style="cursor:pointer" for="piece-txt-input">↑ Load notes from .txt</label>
@@ -1035,6 +1036,12 @@ input[type=file]{display:none}
     <div class="collapsible-body" id="docs-body">
       <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v9.0</span>
 
+      <div class="doc-h">WHAT'S NEW IN v9.10</div>
+      · <strong style="color:var(--text)">"📊 Storage usage" is now a full Storage browser.</strong> Every synced audio file shows its size, last-modified date, and — critically — whether any piece actually references it, so you can tell "a piece with audio intentionally freed up" (nothing wrong, by design) apart from "a stray file nothing points to" (safe to clean up). Files not referenced by any piece can be deleted directly. Any file can also be manually assigned to any piece — the direct recovery path for a mixup like the Schubert one, without needing to re-upload anything.<br>
+      <div class="doc-h">WHAT'S NEW IN v9.9</div>
+      · <strong style="color:var(--text)">"☁ Sync all pieces now"</strong> in the ⋯ menu — pulls newer cloud metadata and pushes local changes for every active piece in one pass, instead of opening each one by hand. Also useful for migrating older pieces that predate cloud sync.<br>
+      · <strong style="color:var(--text)">Ran a genuine two-device stress test</strong> — not mocked in one page, but two truly independent browser instances editing the same piece concurrently against a real shared backend. It surfaced two real gaps, both fixed: pushes were stamping a stale locally-stored timestamp instead of the actual moment of pushing (meaning "newest wins" could really mean "whichever network request happened to land last"), and a tied timestamp could leave a device silently believing it was in sync when the cloud had actually moved on. Both fixed — timestamps are now always freshly stamped at push time, local storage stays in sync after every push, and a tie is now resolved by comparing actual content rather than assuming a match.<br>
+      · Worth knowing: genuinely simultaneous edits to the <em>same piece</em> from two devices within a couple seconds of each other can still have their final cloud state decided by push timing rather than strict edit order — this is a known, accepted tradeoff for structured piece data (markers, passages, notes), same as documented before, now confirmed for real rather than assumed. It's a different, narrower risk than the practice journal ever had, since journal conflicts are far more likely in normal use and are handled with full merge-safety (see v9.8).<br>
       <div class="doc-h">WHAT'S NEW IN v9.8</div>
       · <strong style="color:var(--text)">The practice journal now syncs across browsers/devices.</strong> Previously it was pure local storage — "universal" only meant "shared across pieces on this one browser," not across devices. It's now merge-safe by design: if only one side changed since the last sync, that side's version is taken with no risk; if <em>both</em> sides changed independently, both are kept — concatenated with a clear divider — rather than one silently overwriting the other. Verified with four separate test scenarios (first sync, safe pull, safe push, true conflict) before shipping.<br>
       · <strong style="color:var(--text)">New: "☁ Check for pieces not in this browser"</strong> in the ⋯ menu. Lists any piece that exists in the cloud but not in this browser's local library, and lets you pull it in — strictly additive, it never touches or overwrites a piece that's already here. Fixes the "added a piece on one browser, never showed up on the other" gap. Note: only checks active pieces, not archived ones.<br>
@@ -1810,27 +1817,143 @@ function _updateCloudSyncMenuItem() {
 
 // Assembles the currently-open piece's data in the exact shape Firestore
 // expects. Shared by both the debounced auto-push and the manual fallback.
+// Builds the payload pushed to Firestore for a given piece. Safe to call
+// for ANY piece, not just the currently-open one — used both by the
+// per-open-piece autosave push and by syncAllPiecesNow()'s bulk loop.
+// For the currently-open piece, the live in-memory globals/DOM (markers,
+// segments, the Notes textarea) are the freshest source, since an edit may
+// not have flushed to `sessions[name]` yet; for any other piece, its stored
+// record in `sessions` is the only correct source — reading the live DOM
+// notes textarea for a piece that ISN'T open would silently overwrite that
+// piece's real notes with whatever happens to be displayed right now.
 async function _assembleCloudPieceData(pieceName, sessions) {
   const s = sessions[pieceName];
   if (!s) return null;
+  const isOpen = (pieceName === currentPieceName);
   return {
     pieceName,
-    audioFileName: s.audioFileName || audioFileName || '',
-    audioDuration: s.audioDuration || audioDuration || 0,
-    markers: s.markers || markers || [],
-    markerIdCounter: s.markerIdCounter || markerIdCounter || 0,
-    segments: s.segments || segments || [],
-    segmentIdCounter: s.segmentIdCounter || segmentIdCounter || 0,
-    notes: document.getElementById('piece-notes')?.value ?? (s.notes || ''),
+    audioFileName: s.audioFileName || (isOpen ? audioFileName : '') || '',
+    audioDuration: s.audioDuration || (isOpen ? audioDuration : 0) || 0,
+    markers: s.markers || (isOpen ? markers : []) || [],
+    markerIdCounter: s.markerIdCounter || (isOpen ? markerIdCounter : 0) || 0,
+    segments: s.segments || (isOpen ? segments : []) || [],
+    segmentIdCounter: s.segmentIdCounter || (isOpen ? segmentIdCounter : 0) || 0,
+    notes: isOpen ? (document.getElementById('piece-notes')?.value ?? (s.notes || '')) : (s.notes || ''),
     competence: s.competence || null,
     libraryId: s.libraryId || null,
     collectionIds: Array.isArray(s.collectionIds) ? s.collectionIds : [],
-    savedAt: s.savedAt || Date.now()
+    // Always freshly stamped at push time, never a stale stored value — see
+    // the block comment above. This is what makes "newest wins" pulls
+    // actually mean "most recently edited," not "most recently arrived."
+    savedAt: Date.now()
   };
 }
 
-// Debounced trigger — called from _autosaveToLibrary() after every edit.
-// Metadata only (no audio) — cheap and safe to fire often.
+// Pulls just the metadata (markers, passages, notes, level, library/
+// collection membership) for a single piece from the cloud into local
+// storage. Deliberately separate from _autoCloudPullOnOpen: that function
+// also downloads and applies AUDIO unconditionally once it starts, with no
+// check for which piece is actually open (that's fine there, since it's
+// only ever called for the piece being opened) — looping it over every
+// piece in the library would download and apply every piece's audio one
+// after another, hijacking whatever's currently playing. This function
+// never touches audio and never reaches into live globals, so it's safe to
+// call in a loop over pieces the person isn't currently looking at.
+async function _bulkPullMetadataOnly(name, sessions) {
+  if (typeof window.cloudFetchPiece !== 'function' || !_cloudSignedIn()) return false;
+  const cloudData = await window.cloudFetchPiece(name);
+  if (!cloudData) return false;
+  const localData = sessions[name];
+  const localSavedAt = localData?.savedAt || 0;
+  const cloudSavedAt = cloudData.savedAt || 0;
+  const isStale = localData && cloudSavedAt > localSavedAt;
+  const isTiedButDifferent = localData && cloudSavedAt === localSavedAt &&
+    _pieceContentSignature(cloudData) !== _pieceContentSignature(localData);
+  if (localData && !isStale && !isTiedButDifferent) return false; // local already current and matches
+
+  const { libraries, collections } = await window.cloudFetchLibrariesAndCollections();
+  const libIdTranslate = {};
+  const localLibByName = {};
+  Object.values(sessions.__libraries__ || {}).forEach(l => { localLibByName[(l.name||'').trim().toLowerCase()] = l.id; });
+  Object.keys(libraries || {}).forEach(cid => {
+    const clib = libraries[cid];
+    const key = (clib.name||'').trim().toLowerCase();
+    if (localLibByName[key]) { libIdTranslate[cid] = localLibByName[key]; }
+    else if (!sessions.__libraries__[cid]) { sessions.__libraries__[cid] = clib; }
+  });
+  const colIdTranslate = {};
+  const localColByName = {};
+  Object.values(sessions.__collections__ || {}).forEach(c => { localColByName[(c.name||'').trim().toLowerCase()] = c.id; });
+  Object.keys(collections || {}).forEach(cid => {
+    const ccol = collections[cid];
+    const key = (ccol.name||'').trim().toLowerCase();
+    if (localColByName[key]) { colIdTranslate[cid] = localColByName[key]; }
+    else if (!sessions.__collections__[cid]) { sessions.__collections__[cid] = ccol; }
+  });
+
+  sessions[name] = {
+    pieceName: cloudData.pieceName || name,
+    audioFileName: cloudData.audioFileName || (localData?.audioFileName || ''),
+    audioDuration: cloudData.audioDuration || (localData?.audioDuration || 0),
+    markers: cloudData.markers || [],
+    markerIdCounter: cloudData.markerIdCounter || 0,
+    segments: cloudData.segments || [],
+    segmentIdCounter: cloudData.segmentIdCounter || 0,
+    notes: cloudData.notes || '',
+    competence: cloudData.competence || null,
+    libraryId: cloudData.libraryId ? (libIdTranslate[cloudData.libraryId] || cloudData.libraryId) : null,
+    collectionIds: Array.isArray(cloudData.collectionIds)
+      ? cloudData.collectionIds.map(cid => colIdTranslate[cid] || cid)
+      : [],
+    savedAt: cloudSavedAt,
+    archived: localData?.archived || false
+  };
+  return true;
+}
+
+// Loops every active local piece: pulls newer cloud metadata (never audio —
+// see _bulkPullMetadataOnly above for why), then pushes local metadata up.
+// This is also the tool for migrating older pieces that predate cloud sync:
+// running it once, signed in, pushes every local-only piece up to the
+// cloud in one pass instead of opening each one by hand.
+async function syncAllPiecesNow() {
+  closeHdrMenus();
+  if (!_cloudSignedIn()) { alert('Sign in with Google first.'); return; }
+  const sessions = await loadSessionsFromStorage();
+  const names = Object.keys(sessions).filter(n => !n.startsWith('__') && !sessions[n].archived);
+  if (names.length === 0) { alert('No active pieces to sync.'); return; }
+  if (!confirm(`Sync all ${names.length} piece(s) with the cloud now?\n\nThis pulls any newer cloud metadata (markers, passages, notes, level) for each, and pushes local changes up. Audio isn't part of this bulk pass — it only syncs for whichever piece is currently open, same as always, since audio only exists in memory while a piece is open.`)) return;
+
+  let changed = 0, pushed = 0, failed = 0;
+  for (const name of names) {
+    try {
+      const freshSessions = await loadSessionsFromStorage();
+      const didPull = await _bulkPullMetadataOnly(name, freshSessions);
+      if (didPull) { await saveSessionsToStorage(freshSessions); changed++; }
+
+      const forPush = await loadSessionsFromStorage();
+      const pieceData = await _assembleCloudPieceData(name, forPush);
+      if (pieceData && typeof window.cloudSyncCurrentPiece === 'function') {
+        const includeAudio = (name === currentPieceName) ? currentAudioFile : null;
+        const result = await window.cloudSyncCurrentPiece(name, pieceData, includeAudio,
+          forPush.__libraries__ || {}, forPush.__collections__ || {});
+        if (result?.ok) {
+          const afterPush = await loadSessionsFromStorage();
+          if (afterPush[name]) {
+            afterPush[name] = { ...afterPush[name], ...pieceData };
+            await saveSessionsToStorage(afterPush);
+          }
+        }
+        pushed++;
+      }
+    } catch(e) {
+      console.warn('Bulk sync failed for', name, e);
+      failed++;
+    }
+  }
+  renderSessionsList();
+  alert(`Checked ${names.length} piece(s): ${changed} updated from the cloud, ${pushed} pushed up.${failed>0 ? ' '+failed+' failed — check the console.' : ''}`);
+}
 function _scheduleCloudMetadataPush() {
   if (!_cloudSignedIn() || !currentPieceName) return;
   clearTimeout(_cloudPushTimer);
@@ -1839,6 +1962,24 @@ function _scheduleCloudMetadataPush() {
 
 // includeAudio=true is used exactly once, right when a new file is attached
 // (see onAudioFile below) — not on every debounced metadata push.
+// A lightweight fingerprint of everything that actually matters for
+// deciding "is this genuinely different data" — deliberately excludes
+// savedAt itself, since the whole point is to catch cases where savedAt
+// ties (or is otherwise unhelpful) but the underlying content doesn't
+// match. Used to make sure a tied timestamp never causes a device to
+// silently keep believing it's in sync with the cloud when it actually
+// isn't — see the concurrency stress test that surfaced this.
+function _pieceContentSignature(d) {
+  if (!d) return '';
+  try {
+    return JSON.stringify({
+      markers: d.markers || [], segments: d.segments || [], notes: d.notes || '',
+      competence: d.competence || null, libraryId: d.libraryId || null,
+      collectionIds: d.collectionIds || [], audioFileName: d.audioFileName || ''
+    });
+  } catch(e) { return ''; }
+}
+
 async function _pushCloudNow(includeAudio) {
   if (typeof window.cloudSyncCurrentPiece !== 'function') return;
   if (!_cloudSignedIn() || !currentPieceName) return;
@@ -1850,6 +1991,18 @@ async function _pushCloudNow(includeAudio) {
   const result = await window.cloudSyncCurrentPiece(pieceName, pieceData,
     includeAudio ? currentAudioFile : null, sessions.__libraries__ || {}, sessions.__collections__ || {});
   _setCloudStatus(result?.ok ? 'synced' : 'error');
+  if (result?.ok) {
+    // Keep the local record in sync with exactly what was just pushed,
+    // notably its fresh savedAt — without this, the local record stays
+    // frozen at whatever it was on the last local-only save, and a later
+    // pull-vs-local comparison would be comparing against stale data
+    // instead of what's genuinely already been synced.
+    const freshSessions = await loadSessionsFromStorage();
+    if (freshSessions[pieceName]) {
+      freshSessions[pieceName] = { ...freshSessions[pieceName], ...pieceData };
+      await saveSessionsToStorage(freshSessions);
+    }
+  }
 }
 
 // Called from loadNamedSession() right after a piece opens. Silently checks
@@ -1879,7 +2032,8 @@ async function _autoCloudPullOnOpen(name, myGen) {
     // local savedAt is never behind (you're the one who pushed it), so audio
     // was never re-fetched after a reload — the person always had to
     // re-attach the file by hand.
-    const metadataIsNewer = !localData || cloudSavedAt > localSavedAt;
+    const metadataIsNewer = !localData || cloudSavedAt > localSavedAt ||
+      (cloudSavedAt === localSavedAt && _pieceContentSignature(cloudData) !== _pieceContentSignature(localData));
 
     if (metadataIsNewer) {
       _setCloudStatus('pulling');
@@ -3468,38 +3622,88 @@ function _slugForPieceMatch(name) {
 async function renderStorageUsagePanel() {
   const el = document.getElementById('storage-usage-list');
   if (!el || !showStorageUsage) return;
-  if (!_cloudSignedIn()) { el.innerHTML = '<span class="lib-empty">Sign in to view cloud storage usage.</span>'; return; }
+  if (!_cloudSignedIn()) { el.innerHTML = '<span class="lib-empty">Sign in to view cloud storage.</span>'; return; }
   if (typeof window.cloudGetStorageUsage !== 'function') { el.innerHTML = '<span class="lib-empty">Not available.</span>'; return; }
   el.innerHTML = '<span class="lib-empty">Loading…</span>';
-  const usage = await window.cloudGetStorageUsage();
-  if (!usage.ok) { el.innerHTML = '<span class="lib-empty">Could not load storage usage — try again in a moment.</span>'; return; }
 
-  const sessions = await loadSessionsFromStorage();
-  const idToName = {};
-  Object.keys(sessions).filter(k => !_isMetaKey(k)).forEach(k => {
-    idToName[_slugForPieceMatch(sessions[k].pieceName || k)] = sessions[k].pieceName || k;
-  });
+  const [usage, pieceAudioPaths, sessions] = await Promise.all([
+    window.cloudGetStorageUsage(),
+    (typeof window.cloudListPiecesAudioPaths === 'function') ? window.cloudListPiecesAudioPaths() : [],
+    loadSessionsFromStorage()
+  ]);
+  if (!usage.ok) { el.innerHTML = '<span class="lib-empty">Could not load storage — try again in a moment.</span>'; return; }
+
+  // Reverse map: which piece (if any) currently points at each exact file
+  // path. Deliberately checks the real audioStoragePath string, not just a
+  // slug-name match, since a file can be manually reassigned across pieces
+  // (see cloudAssignAudioToPiece) and no longer follow the naming
+  // convention it was created under.
+  const pathToPieceName = {};
+  (pieceAudioPaths || []).forEach(p => { if (p.audioStoragePath) pathToPieceName[p.audioStoragePath] = p.name; });
+
+  const localPieceNames = Object.keys(sessions).filter(k => !_isMetaKey(k) && !sessions[k].archived);
+  const pieceOptionsHtml = localPieceNames.map(n => `<option value="${escHtml(n)}">${escHtml(n)}</option>`).join('');
 
   const sorted = [...usage.files].sort((a, b) => b.bytes - a.bytes);
   const totalMB = (usage.totalBytes / 1048576).toFixed(1);
-  const header = `<div class="lib-meta" style="padding:0.3rem 0 0.5rem">Total synced audio: ${totalMB} MB across ${sorted.length} piece${sorted.length!==1?'s':''}</div>`;
+  const orphanCount = sorted.filter(f => !pathToPieceName[f.fullPath]).length;
+  const header = `<div class="lib-meta" style="padding:0.3rem 0 0.5rem">Total synced audio: ${totalMB} MB across ${sorted.length} file${sorted.length!==1?'s':''}${orphanCount ? ` — <span style="color:var(--red)">${orphanCount} not referenced by any piece</span>` : ''}</div>`;
 
   if (!sorted.length) { el.innerHTML = header + '<span class="lib-empty">No synced audio yet.</span>'; return; }
 
   const rows = sorted.map(f => {
-    const name = idToName[f.pieceId] || f.pieceId;
-    const safe = escHtml(name);
-    const safeJs = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const referencedBy = pathToPieceName[f.fullPath] || null;
     const mb = (f.bytes / 1048576).toFixed(1);
-    return `<div class="lib-row" style="cursor:default">
-      <div class="lib-row-left"><span class="lib-name">${safe}</span></div>
-      <div class="lib-row-right" style="gap:0.5rem">
-        <span class="lib-date">${mb} MB</span>
-        <button class="lib-del" title="Free up space — deletes only the cloud audio; markers, notes, and history stay exactly as they are" onclick="freeUpPieceAudioSpace('${safeJs}')">🗑</button>
+    const dateStr = f.updated ? new Date(f.updated).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}) : '—';
+    const pathJs = f.fullPath.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    const statusHtml = referencedBy
+      ? `<span style="color:var(--text-faint)">→ ${escHtml(referencedBy)}</span>
+         <button class="lib-del" title="Free up space — deletes only the cloud audio; markers, notes, and history stay exactly as they are"
+           onclick="freeUpPieceAudioSpace('${referencedBy.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">🗑</button>`
+      : `<span style="color:var(--red)">⚠ not referenced by any piece</span>
+         <button class="lib-del" title="Delete this file — nothing references it, so nothing else is affected"
+           onclick="deleteOrphanedStorageFile('${pathJs}')">🗑</button>`;
+    const assignHtml = `<select class="lib-cat-select" id="assign-select-${btoa(f.pieceId).replace(/[^a-zA-Z0-9]/g,'')}" style="width:110px">
+        <option value="">Assign to…</option>${pieceOptionsHtml}
+      </select>
+      <button class="btn-sm" style="font-size:0.4rem;padding:0.1rem 0.35rem"
+        onclick="assignStorageFileToPieceUI('${pathJs}', '${(f.pieceId||'audio').replace(/'/g,"\\'")}', 'assign-select-${btoa(f.pieceId).replace(/[^a-zA-Z0-9]/g,'')}')">Assign</button>`;
+    return `<div class="lib-row" style="cursor:default;flex-wrap:wrap">
+      <div class="lib-row-left">
+        <span class="lib-name" style="font-size:0.42rem">${escHtml(f.pieceId)}</span>
+        <span class="lib-meta">${mb} MB · ${dateStr}</span>
+      </div>
+      <div class="lib-row-right" style="gap:0.4rem;flex-wrap:wrap">
+        ${statusHtml}
+        ${assignHtml}
       </div>
     </div>`;
   }).join('');
   el.innerHTML = header + rows;
+}
+
+async function deleteOrphanedStorageFile(fullPath) {
+  if (!confirm(`Delete this file from cloud storage?\n\nNo piece currently references it, so this is safe cleanup — but it can't be undone.`)) return;
+  if (typeof window.cloudDeleteStorageFileByPath !== 'function') return;
+  const result = await window.cloudDeleteStorageFileByPath(fullPath);
+  if (!result.ok) { alert('Delete failed — check the console.'); return; }
+  renderStorageUsagePanel();
+}
+
+async function assignStorageFileToPieceUI(storagePath, fileNameGuess, selectId) {
+  const select = document.getElementById(selectId);
+  const pieceName = select ? select.value : '';
+  if (!pieceName) { alert('Choose a piece first.'); return; }
+  if (!confirm(`Assign this file as "${pieceName}"'s audio?\n\nThis overwrites whatever audio "${pieceName}" currently points to. Its markers, passages, and notes are untouched. If "${pieceName}" is open right now, its audio will reload immediately.`)) return;
+  if (typeof window.cloudAssignAudioToPiece !== 'function') return;
+  const result = await window.cloudAssignAudioToPiece(pieceName, storagePath, fileNameGuess);
+  if (!result.ok) { alert('Assign failed — check the console.'); return; }
+  if (pieceName === currentPieceName) {
+    const myGen = ++_pieceLoadGen;
+    await _autoCloudPullOnOpen(pieceName, myGen);
+  }
+  renderStorageUsagePanel();
+  alert(`Assigned. ${pieceName === currentPieceName ? 'Audio reloaded.' : 'Open "'+pieceName+'" to load the audio.'}`);
 }
 
 async function freeUpPieceAudioSpace(name) {
@@ -6728,13 +6932,70 @@ window.addEventListener('beforeunload', e => {
       const listing = await listAll(folderRef);
       const files = await Promise.all(listing.items.map(async itemRef => {
         const meta = await getMetadata(itemRef);
-        return { pieceId: itemRef.name, bytes: meta.size || 0 };
+        return { pieceId: itemRef.name, fullPath: itemRef.fullPath, bytes: meta.size || 0,
+                 updated: meta.updated || meta.timeCreated || null };
       }));
       const totalBytes = files.reduce((sum, f) => sum + f.bytes, 0);
       return { ok: true, files, totalBytes };
     } catch(e) {
       console.warn('Storage usage fetch failed:', e);
       return { ok: false, reason: 'error', error: e, files: [], totalBytes: 0 };
+    }
+  };
+
+  // Cheap: name + audioStoragePath only, for every piece — used by the
+  // Storage browser to figure out which (if any) piece currently claims
+  // each file in the bucket, without fetching markers/segments/notes for
+  // pieces we don't need full data for.
+  window.cloudListPiecesAudioPaths = async function() {
+    if (!currentUser) return [];
+    try {
+      const snap = await getDocs(collection(db, 'users', currentUser.uid, 'pieces'));
+      const out = [];
+      snap.forEach(d => {
+        const data = d.data();
+        if (data && data.pieceName) out.push({ name: data.pieceName, audioStoragePath: data.audioStoragePath || null });
+      });
+      return out;
+    } catch(e) {
+      console.error('Cloud piece audio-path listing failed:', e);
+      return [];
+    }
+  };
+
+  // Deletes a Storage file by its exact path, with no assumption about
+  // which piece (if any) it belongs to — used for cleaning up genuinely
+  // orphaned files (no piece's audioStoragePath points to them). Does NOT
+  // touch any Firestore piece doc, since an orphaned file by definition
+  // has none pointing to it.
+  window.cloudDeleteStorageFileByPath = async function(fullPath) {
+    if (!currentUser) return { ok: false, reason: 'not-signed-in' };
+    try {
+      await deleteObject(ref(storage, fullPath));
+      return { ok: true };
+    } catch(e) {
+      console.warn('Orphaned file delete failed:', e);
+      return { ok: false, reason: 'error', error: e };
+    }
+  };
+
+  // Points an EXISTING piece at an EXISTING Storage file directly — no
+  // re-upload, since the bytes are already there. Deliberately does not
+  // assume the file "belongs" to this piece by naming convention: this is
+  // the manual recovery path for exactly the kind of file mixup that
+  // prompted this feature, so it has to work even when reassigning a file
+  // across pieces, not just restoring a piece to its own slot.
+  window.cloudAssignAudioToPiece = async function(pieceName, storagePath, fileName) {
+    if (!currentUser) return { ok: false, reason: 'not-signed-in' };
+    const pieceId = _slugifyPieceId(pieceName);
+    try {
+      await updateDoc(doc(db, 'users', currentUser.uid, 'pieces', pieceId), {
+        audioStoragePath: storagePath, audioFileName: fileName || 'audio'
+      });
+      return { ok: true };
+    } catch(e) {
+      console.warn('Assign audio to piece failed:', e);
+      return { ok: false, reason: 'error', error: e };
     }
   };
 
