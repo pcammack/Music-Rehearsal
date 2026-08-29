@@ -195,9 +195,6 @@ input[type=file]{display:none}
 .folder-banner.needs-reconnect .folder-banner-msg strong{color:var(--accent)}
 .folder-banner-actions{display:flex;gap:0.3rem;align-items:center;flex-shrink:0}
 .migrate-status{font-size:0.42rem;color:var(--text-faint);margin-top:0.35rem;line-height:1.9}
-.migrate-row{display:flex;align-items:center;gap:0.4rem}
-.migrate-check{color:var(--green)}
-.migrate-pending{color:var(--text-faint)}
 
 /* ── MARKER TOOLTIP on waveform ── */
 #marker-tooltip{position:fixed;background:var(--bg3);border:1px solid var(--border-l);
@@ -481,12 +478,12 @@ input[type=file]{display:none}
 .hdr-dropdown-item:hover{background:var(--bg4);color:var(--text)}
 .hdr-dropdown-label{font-size:0.34rem;color:var(--text-faint);letter-spacing:0.1em;
   text-transform:uppercase;padding:0.3rem 0.5rem 0.15rem}
-.hdr-folder-inline{padding:0.35rem 0.5rem;font-size:0.4rem;color:var(--text-faint);
-  border-top:1px solid var(--border);margin-top:0.15rem}
-.hdr-folder-inline strong{color:var(--text-mid)}
-.lib-manage-toggle{font-size:0.4rem;color:var(--text-faint);cursor:pointer;
-  padding:0.3rem 0.5rem;border-bottom:1px solid var(--border);transition:color 0.15s}
-.lib-manage-toggle:hover{color:var(--text-mid)}
+#manage-panel{border-bottom:1px solid var(--border);padding:0.3rem 0.5rem 0.5rem}
+.manage-section-hdr{font-size:0.4rem;letter-spacing:0.12em;text-transform:uppercase;
+  color:var(--text-faint);margin:0.6rem 0 0.25rem;padding-top:0.4rem;border-top:1px solid var(--border)}
+.manage-section-hdr:first-child{margin-top:0.1rem;padding-top:0;border-top:none}
+.manage-actions-row{display:flex;flex-wrap:wrap;gap:0.2rem}
+#manage-panel-btn.active{color:var(--accent)}
 /* ── PASSIVE CLOUD SYNC STATUS BADGE ── */
 #cloud-status-badge{font-size:0.4rem;color:var(--text-faint);margin-left:0.6rem;
   vertical-align:middle;cursor:default;transition:color 0.2s}
@@ -546,6 +543,8 @@ input[type=file]{display:none}
 .lib-row:last-child{border-bottom:none}
 .lib-row:hover{background:var(--bg3)}
 .lib-row.active{background:var(--bg3);border-left-color:var(--accent)}
+.lib-row.archived{opacity:0.5}
+.lib-row.archived:hover{opacity:0.75}
 .lib-row-left{display:flex;flex-direction:column;gap:0.15rem}
 .lib-name{font-size:0.58rem;color:var(--text-faint);transition:color 0.15s}
 .lib-row.active .lib-name{color:var(--text)}
@@ -656,6 +655,12 @@ input[type=file]{display:none}
   text-transform:uppercase;padding:0.25rem 0.6rem;pointer-events:none;
   animation:saveFlash 1.6s ease forwards;z-index:50}
 
+.undo-toast{position:fixed;bottom:5.2rem;right:1.5rem;background:var(--bg3);border:1px solid var(--accent);
+  color:var(--text-mid);font-family:'JetBrains Mono',monospace;font-size:0.44rem;
+  padding:0.3rem 0.6rem;z-index:55;display:none}
+.undo-toast-btn{background:none;border:none;color:var(--accent);cursor:pointer;
+  font-family:inherit;font-size:inherit;text-decoration:underline;padding:0}
+
 /* #11 drag tooltip */
 #drag-tooltip{position:fixed;background:var(--bg3);border:1px solid var(--border-l);
   color:var(--text);font-family:'JetBrains Mono',monospace;font-size:0.44rem;
@@ -677,7 +682,7 @@ input[type=file]{display:none}
   <button class="btn-sm" id="replace-audio-btn" style="display:none;font-size:0.4rem"
     onclick="if(confirm('Replace this piece\'s audio file? The new file will overwrite whatever is currently stored — locally and in the cloud, if signed in. Markers, passages, and notes are untouched.')) document.getElementById('audio-input').click()"
     title="Attach a different mp3 to this piece, overwriting its stored audio">↻ Replace audio</button>
-  <span id="cloud-status-badge" style="display:none"></span>
+  <span id="cloud-status-badge" style="display:none" onclick="if(this.classList.contains('state-error'))forceCloudSyncNow()"></span>
 </div>
 
 <div class="workspace">
@@ -960,7 +965,7 @@ input[type=file]{display:none}
 
   <!-- Library -->
   <div class="library-panel">
-    <!-- Google sign-in banner (Firebase Phase 2 — auth only, no data sync yet) -->
+    <!-- Google sign-in banner -->
     <div id="auth-banner" class="folder-banner" style="display:none">
       <span class="folder-banner-msg" id="auth-banner-msg"></span>
       <div class="folder-banner-actions">
@@ -971,56 +976,51 @@ input[type=file]{display:none}
       <span class="library-title">Repertoire</span>
       <div class="hdr-menu-wrap">
         <span class="collapse-arrow" id="library-arrow" onclick="toggleSection('library')" title="Collapse/expand">▾</span>
-        <button class="hdr-menu-btn" id="tools-menu-btn" onclick="toggleHdrMenu('tools')" title="Backup and advanced options">⋯</button>
-        <div class="hdr-dropdown" id="tools-menu">
-          <button class="hdr-dropdown-item" onclick="exportLibraryJSON();closeHdrMenus()">↓ Download backup</button>
-          <label class="hdr-dropdown-item" style="cursor:pointer" for="import-json-input">↑ Restore from file</label>
-          <input type="file" id="import-json-input" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" onchange="importLibraryJSON(this.files[0]);closeHdrMenus()">
-          <button class="hdr-dropdown-item" id="cloud-force-btn" onclick="forceCloudSyncNow()" style="display:none">↻ Sync now (manual)</button>
-          <button class="hdr-dropdown-item" onclick="syncAllPiecesNow()">☁ Sync all pieces now</button>
-          <button class="hdr-dropdown-item" onclick="checkForCloudOnlyPieces()">☁ Check for pieces not in this browser</button>
-          <button class="hdr-dropdown-item" onclick="mergeDuplicateLibrariesAndCollections()">🧹 Merge duplicate libraries/collections</button>
-          <label class="hdr-dropdown-item" style="cursor:pointer" for="piece-txt-input">↑ Load notes from .txt</label>
-          <input type="file" id="piece-txt-input" accept=".txt,text/plain" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" onchange="manualLoadPieceTxt(this.files[0]);closeHdrMenus()">
-          <button class="hdr-dropdown-item" onclick="folderBannerAction();closeHdrMenus()" id="folder-menu-action">Connect local folder</button>
-          <div class="hdr-folder-inline" id="folder-status-inline" style="display:none"></div>
-        </div>
+        <button class="hdr-menu-btn" id="manage-panel-btn" onclick="toggleManagePanel()" title="Manage collections, sync, and storage">⚙</button>
       </div>
     </div>
     <div id="library-body" style="display:block">
     <!-- Import feedback -->
     <div class="import-notice" id="import-notice"></div>
-    <!-- Library/Collection management — tucked behind a deliberate toggle,
-         since adding/renaming/deleting a library or collection is a rare
-         action, not something that needs to sit visible during normal use -->
-    <div class="lib-manage-toggle" id="lib-manage-toggle" onclick="toggleLibManagePanel()">⚙ Manage libraries &amp; collections</div>
-    <div id="lib-manage-panel" style="display:none">
-      <!-- Library manager: permanent, one-per-piece, renameable groupings -->
-      <div class="lib-chip-row" id="library-manager"></div>
-      <!-- Collection manager: flexible, non-exclusive, temporary groupings -->
+
+    <!-- v10: single consolidated Manage panel. Replaces three separate
+         collector zones (the old ⋯ tools menu, the "Manage libraries &
+         collections" panel, and the standalone Storage usage toggle) with
+         one panel in three clearly-labeled sections, so there's one door
+         into "gather multiple functions" controls instead of three. -->
+    <div id="manage-panel" style="display:none">
+      <div class="manage-section-hdr">Collections</div>
       <div class="lib-chip-row" id="collection-manager"></div>
+
+      <div class="manage-section-hdr">Data &amp; Sync</div>
+      <div class="manage-actions-row">
+        <button class="hdr-dropdown-item" onclick="exportLibraryJSON()">↓ Download backup</button>
+        <label class="hdr-dropdown-item" style="cursor:pointer" for="import-json-input">↑ Restore from file</label>
+        <input type="file" id="import-json-input" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" onchange="importLibraryJSON(this.files[0])">
+        <button class="hdr-dropdown-item" onclick="syncAllPiecesNow()">☁ Sync all pieces now</button>
+        <button class="hdr-dropdown-item" onclick="checkForCloudOnlyPieces()">☁ Check for pieces not in this browser</button>
+        <label class="hdr-dropdown-item" style="cursor:pointer" for="piece-txt-input">↑ Load notes from .txt</label>
+        <input type="file" id="piece-txt-input" accept=".txt,text/plain" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none" onchange="manualLoadPieceTxt(this.files[0])">
+      </div>
+
+      <div class="manage-section-hdr">Storage</div>
+      <div id="storage-usage-list"></div>
     </div>
+
     <div class="lib-sort-bar">
       <span class="lib-sort-label">Sort:</span>
       <button class="lib-sort-btn active" id="lib-sort-alpha" onclick="setLibSort('alpha')">A–Z</button>
       <button class="lib-sort-btn" id="lib-sort-competence" onclick="setLibSort('competence')">By level</button>
+      <button class="lib-sort-btn" id="lib-sort-recent" onclick="setLibSort('recent')">Recent</button>
+      <button class="lib-sort-btn" id="show-archived-toggle" onclick="toggleShowArchivedPieces()" title="Show archived pieces inline, dimmed, at the bottom of the list">📦 Archived</button>
       <span id="collection-filter-wrap" style="margin-left:auto"></span>
     </div>
     <div id="sessions-list"><span class="lib-empty">No pieces saved yet.</span></div>
-    <div class="lib-manage-toggle" id="archived-pieces-toggle" onclick="toggleArchivedPiecesPanel()">📦 Archived pieces (0)</div>
-    <div id="archived-pieces-panel" style="display:none">
-      <div id="archived-pieces-list"></div>
-    </div>
-    <div class="lib-manage-toggle" id="storage-usage-toggle" onclick="toggleStorageUsagePanel()">📊 Storage usage</div>
-    <div id="storage-usage-panel" style="display:none">
-      <div id="storage-usage-list"></div>
-    </div>
     <!-- Add new piece -->
     <div class="lib-new-piece-form">
       <input class="lib-new-input" id="new-piece-input"
         placeholder="New piece name…"
         onkeydown="if(event.key==='Enter')addNewPiece()">
-      <select class="lib-new-select" id="new-piece-library" title="Library"></select>
       <input type="file" id="new-piece-audio" accept=".mp3,.m4a,.wav,.aiff,.aif,.flac,audio/*"
         style="display:none" onchange="onNewPieceAudio(this.files[0])">
       <button class="btn-sm primary" onclick="addNewPiece()">+ Add</button>
@@ -1034,101 +1034,29 @@ input[type=file]{display:none}
       <span>Documentation</span><span id="docs-arrow">▸</span>
     </button>
     <div class="collapsible-body" id="docs-body">
-      <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v9.0</span>
+      <span style="color:var(--accent);font-size:0.56rem">REHEARSAL SPACE v10.0</span>
 
+      <div class="doc-h">WHAT'S NEW IN v10.0</div>
+      · <strong style="color:var(--text)">Piece-organization audit and redesign.</strong> A full audit of every piece-level control (architecture, metadata, collections, sync tools) turned up real redundancy and real bugs — this release acts on the findings.<br>
+      · <strong style="color:var(--text)">Library architecture removed, folded entirely into Collections.</strong> Library only ever offered exclusive, single-value membership; the actual need (genre + function + event, all at once) was always multi-membership, which Collections already did. A data check confirmed the feature had gone essentially unused. Removed: library CRUD, the per-row library dropdown/color-coding, and the grouped/collapsible list view — the list now always renders flat.<br>
+      · <strong style="color:var(--text)">"Connect local folder" removed entirely.</strong> A whole parallel, single-device persistence system that predated cloud sync and had gone unused since. Regular OS file browsing covers audio uploads instead.<br>
+      · <strong style="color:var(--text)">"Merge duplicate libraries/collections" removed</strong> — confirmed one-time migration tool for a cloud-merge bug fixed back in v9.2.<br>
+      · <strong style="color:var(--text)">Consolidated Manage panel.</strong> The old ⋯ tools menu, the separate "Manage libraries & collections" panel, and the standalone Storage usage toggle — three collector zones — are now one panel, three labeled sections (Collections / Data & Sync / Storage).<br>
+      · <strong style="color:var(--text)">Archived pieces now show inline</strong> (dimmed, sorted to the bottom, via the new "📦 Archived" toggle next to Sort) instead of a separate panel — restore or delete right on the same row.<br>
+      · <strong style="color:var(--text)">Collections can be created inline</strong>, right from the "+" picker used to assign them to a piece — no round trip to Manage for the thing you'll do constantly. Includes a brief undo affordance.<br>
+      · <strong style="color:var(--text)">Icon meaning standardized app-wide: 📦 always reversible, ✕ always permanent.</strong> Collections previously used ✕ for archiving — now matches pieces.<br>
+      · <strong style="color:var(--text)">"Sync now (manual)" removed as a standalone button</strong>, folded into the cloud status badge — click it on a sync error to retry.<br>
+      · <strong style="color:var(--text)">New "Recent" sort</strong>, using last-practiced data already shown on every row.<br>
+      · <strong style="color:var(--text)">Collection filter now labeled</strong> ("Filter:") — it became the primary slicing tool once Collections absorbed Library's old job too.<br>
+      · <strong style="color:var(--text)">Fixed:</strong> the sign-in banner's stale "data still saves locally only" copy — cloud sync has been fully automatic since v9.0.<br>
+      · <strong style="color:var(--text)">Documentation split:</strong> full version history before v9.11 moved to <code>CHANGELOG-v10.0.md</code> — see the note just below. Also removed the unused Workflow/Marker Naming/Keyboard reference block.<br>
       <div class="doc-h">WHAT'S NEW IN v9.12</div>
       · <strong style="color:var(--text)">Fixed: "☁ Sync all pieces now" could leave the currently-open piece looking stale even when it pulled a real update.</strong> The bulk pull only ever wrote to localStorage — deliberately, since it's built to loop over pieces you're not currently looking at, and never touches live playback state for those. But if the piece it just pulled a newer copy of was the one you had open at the time, the on-screen notes/markers/passages sat unrefreshed until you closed and reopened that piece or reloaded the page — the pulled data was saved correctly, just not visibly reflected. Bulk sync now also refreshes the visible fields when the currently-open piece is the one it just updated.<br>
       <div class="doc-h">WHAT'S NEW IN v9.11</div>
       · <strong style="color:var(--text)">Fixed: the practice journal could miss cross-device updates for an entire session.</strong> Every other synced field gets rechecked against the cloud each time you open a piece; the journal previously only checked at sign-in/page-load, when you typed into it yourself, or via manual "↻ Sync now" — so a browser tab left open (not reloaded) had no way to learn about a journal edit made elsewhere, no matter how many pieces you opened or synced in the meantime. Opening any piece and "☁ Sync all pieces now" now also trigger the journal's existing conflict-safe merge check. No change to the merge logic itself (still safe-pull / safe-push / keep-both-on-conflict, per v9.8) — just added the missing trigger.<br>
-      <div class="doc-h">WHAT'S NEW IN v9.10</div>
-      · <strong style="color:var(--text)">"📊 Storage usage" is now a full Storage browser.</strong> Every synced audio file shows its size, last-modified date, and — critically — whether any piece actually references it, so you can tell "a piece with audio intentionally freed up" (nothing wrong, by design) apart from "a stray file nothing points to" (safe to clean up). Files not referenced by any piece can be deleted directly. Any file can also be manually assigned to any piece — the direct recovery path for a mixup like the Schubert one, without needing to re-upload anything.<br>
-      <div class="doc-h">WHAT'S NEW IN v9.9</div>
-      · <strong style="color:var(--text)">"☁ Sync all pieces now"</strong> in the ⋯ menu — pulls newer cloud metadata and pushes local changes for every active piece in one pass, instead of opening each one by hand. Also useful for migrating older pieces that predate cloud sync.<br>
-      · <strong style="color:var(--text)">Ran a genuine two-device stress test</strong> — not mocked in one page, but two truly independent browser instances editing the same piece concurrently against a real shared backend. It surfaced two real gaps, both fixed: pushes were stamping a stale locally-stored timestamp instead of the actual moment of pushing (meaning "newest wins" could really mean "whichever network request happened to land last"), and a tied timestamp could leave a device silently believing it was in sync when the cloud had actually moved on. Both fixed — timestamps are now always freshly stamped at push time, local storage stays in sync after every push, and a tie is now resolved by comparing actual content rather than assuming a match.<br>
-      · Worth knowing: genuinely simultaneous edits to the <em>same piece</em> from two devices within a couple seconds of each other can still have their final cloud state decided by push timing rather than strict edit order — this is a known, accepted tradeoff for structured piece data (markers, passages, notes), same as documented before, now confirmed for real rather than assumed. It's a different, narrower risk than the practice journal ever had, since journal conflicts are far more likely in normal use and are handled with full merge-safety (see v9.8).<br>
-      <div class="doc-h">WHAT'S NEW IN v9.8</div>
-      · <strong style="color:var(--text)">The practice journal now syncs across browsers/devices.</strong> Previously it was pure local storage — "universal" only meant "shared across pieces on this one browser," not across devices. It's now merge-safe by design: if only one side changed since the last sync, that side's version is taken with no risk; if <em>both</em> sides changed independently, both are kept — concatenated with a clear divider — rather than one silently overwriting the other. Verified with four separate test scenarios (first sync, safe pull, safe push, true conflict) before shipping.<br>
-      · <strong style="color:var(--text)">New: "☁ Check for pieces not in this browser"</strong> in the ⋯ menu. Lists any piece that exists in the cloud but not in this browser's local library, and lets you pull it in — strictly additive, it never touches or overwrites a piece that's already here. Fixes the "added a piece on one browser, never showed up on the other" gap. Note: only checks active pieces, not archived ones.<br>
-      <div class="doc-h">WHAT'S NEW IN v9.7</div>
-      · <strong style="color:var(--text)">Fixed a real bug: audio could get cross-assigned between pieces when switching quickly.</strong> Opening one piece and then switching to another before its cloud audio finished downloading could apply the first piece's audio to the second, and even re-upload it — silently swapping their mp3s. Fixed by having each piece-open carry a generation token; any pull that resolves after you've moved on now discards itself instead of applying stale data. Confirmed with a deliberate race-condition test, both before and after the fix.<br>
-      · <strong style="color:var(--text)">New: "↻ Replace audio" button</strong> next to the piece title, always available while a piece is open. Directly overwrites that piece's stored audio (locally and in the cloud) without touching its markers, passages, or notes — a manual recovery path for exactly the kind of mixup above, or just replacing a bad recording.<br>
-      · <strong style="color:var(--text)">Fixed: clicking the waveform to seek no longer stops playback.</strong> It now repositions and keeps playing, the same way <code>skipAudio()</code> already worked — clicking to jump around while playing was stopping playback entirely, which was never intended.<br>
-      <div class="doc-h">WHAT'S NEW IN v9.6</div>
-      · <strong style="color:var(--text)">Archiving now frees up the synced audio automatically.</strong> That was the whole point of archiving — it no longer requires a separate manual step in "📊 Storage usage." Restoring an archived piece still works exactly as before; you'll just need to reattach the mp3.<br>
-      · <strong style="color:var(--text)">Performance level is now a dropdown, and it tints the whole row.</strong> Same idea as passage rows: pick Learning/Playing/Evolving from a proper dropdown instead of clicking a tiny dot to cycle through it, and the piece's row in the library now tints with that level's color so it's visible at a glance.<br>
-      · <strong style="color:var(--text)">New: a last-practiced marker on every piece.</strong> Shows how recently a piece was touched, and turns red after 14 days as a nudge to get back to it.<br>
-      · <strong style="color:var(--text)">Every panel except the main player is now collapsible.</strong> Passages, Woodshed, Rehearsal marks, Notes, Last session, Takes, and the Repertoire panel can all be collapsed — state is remembered across reloads.<br>
-      · Removed the "Cloud" and "Advanced" section labels from the ⋯ menu — self-explanatory either way.<br>
-      <div class="doc-h">WHAT'S NEW IN v9.5</div>
-      · <strong style="color:var(--text)">New: Archive pieces, and manage cloud storage space.</strong> A "📦" button next to each piece now archives it — it disappears from the active library, but every bit of data (markers, notes, passages, competence, target date) stays fully intact, browsable anytime under the new "📦 Archived pieces" panel, with an "↩" to restore it. Archiving moves the piece's cloud doc to a separate `archivedPieces` collection (so browsing Firestore directly cleanly separates archived from active) and never touches its synced audio either way. Separately, a new "📊 Storage usage" panel lists every synced audio file with its size, largest first, with a "🗑" per file to free up just that Storage space — clears the audio from the cloud (and the pointer to it) while leaving every bit of metadata completely untouched; useful for staying under a Storage plan's limit without losing any markup.<br>
-      <div class="doc-h">WHAT'S NEW IN v9.4</div>
-      · <strong style="color:var(--text)">Fixed: deleting (or renaming) a piece left it orphaned in the cloud.</strong> Same family of bug as v9.3's library/collection fix, but with a sharper edge: since a piece's cloud identity is just a slugified version of its name (not a "deleted" flag), an undeleted cloud doc/audio file could silently resurface — if a piece was deleted and a new one later created with the same name, or a piece was renamed and something else later reused the old name, opening it would pull in the OLD piece's markers/audio as if they belonged to the "new" one. Deleting or renaming a piece now also removes its old Firestore doc and Storage audio file (best-effort; the local action always stands regardless of whether the cloud cleanup succeeds).<br>
-      <div class="doc-h">WHAT'S NEW IN v9.3</div>
-      · <strong style="color:var(--text)">Fixed: deleting a library or collection didn't remove it from the cloud.</strong> Deletion only ever updated local storage — the Firestore registry still had the entry, and since cloud sync merges by name (as of v9.2), the next pull would see "no local entry with this name" and silently re-import the deleted library/collection from the cloud, undoing the deletion. Both delete actions now also remove the specific entry from the cloud registry (best-effort — the local delete always stands even if this part fails, e.g. offline).<br>
-      <div class="doc-h">WHAT'S NEW IN v9.2</div>
-      · <strong style="color:var(--text)">Fixed: libraries/collections doubled across devices.</strong> Every browser bootstraps its own default libraries ("Solo", "Ensemble", "Jazz", "Pop") the first time it's ever opened, each with its own random id. Cloud sync was merging these registries by id, not by name — so a second device's differently-id'd "Solo" showed up as a second, separate "Solo" instead of being recognized as the same library, compounding with every device used. Cloud pull now reconciles by name: if a local library/collection with the same name already exists, the cloud copy isn't imported as a duplicate — pieces referencing it are transparently re-pointed to the existing local entry instead. A new "🧹 Merge duplicate libraries/collections" item in the ⋯ menu is available as a one-time manual cleanup for anyone who already accumulated duplicates before this fix — safe to run per-browser, re-points affected pieces before removing the duplicate entries, never touches piece data itself.<br>
-      <div class="doc-h">WHAT'S NEW IN v9.1</div>
-      · <strong style="color:var(--text)">Fixed: cloud audio still wasn't loading, even after the v9.0.1 code fixes.</strong> The three code bugs fixed in v9.0.1 were real, but there was a fourth issue sitting outside the app's code entirely: the Firebase Storage bucket had no CORS configuration, so the browser silently blocked the actual audio-byte download (<code>fetch()</code> to the <code>alt=media</code> URL) even though <code>getDownloadURL()</code> itself succeeded — no error surfaced anywhere in the app's own logic, only as a browser-level CORS block visible in dev tools. Fixed with a one-time <code>gsutil cors set</code> command against the bucket (see the plan doc for the exact command). Confirmed live: audio now round-trips through the cloud correctly, matching what the doc had (incorrectly) already claimed as tested back in v9.0.<br>
-      <div class="doc-h">WHAT'S NEW IN v9.0.1</div>
-      · <strong style="color:var(--text)">Fixed: cloud audio sync was silently broken.</strong> Three separate bugs in the v9.0 automatic sync path meant audio never actually round-tripped through the cloud, even though metadata did: (1) a metadata-only push was writing <code>audioStoragePath: null</code> over top of a real, previously-uploaded path — so any edit made seconds after attaching audio erased the cloud's record that audio existed at all; (2) the auto-pull-on-open logic only attempted to fetch audio when the piece's metadata was itself newer than local — but audio is never persisted locally between sessions, so a same-device reload never re-fetched it, regardless of freshness; (3) the guard meant to stop a just-downloaded file from re-uploading itself was reset before the async decode it was guarding even finished, so that pointless round-trip happened anyway. All three fixed together.<br>
-      <div class="doc-h">WHAT'S NEW IN v9.0</div>
-      · <strong style="color:var(--text)">Cloud sync is now fully automatic, both directions:</strong> No more manual "Sync"/"Load" buttons to click. Every edit quietly pushes to Firestore a couple seconds after you stop typing (metadata only — cheap and safe to do often). Attaching a new audio file uploads it to Storage automatically, once, right then. Opening any piece silently checks the cloud first — if it's newer, it's pulled down automatically, and if that piece has synced audio, it's fetched straight from Storage with **no file-picker popup at all**. A small passive status readout next to the piece title (☁ synced / saving… / checking… / error) replaces the old click-and-wait buttons. A single "↻ Sync now" fallback remains in the ⋯ menu for forcing an immediate check (e.g. right after coming back online). Marked as v9.0 rather than another v8.x tick — this is the same kind of qualitative shift as v8.0's original online-capability jump: the app goes from "you must remember to sync" to "it just works in the background."<br>
 
-      <div class="doc-h">WHAT'S NEW IN v8.7</div>
-      · <strong style="color:var(--text)">Load from cloud — the other half of Phase 3:</strong> New "☁ Load [piece] from cloud" item, right below Sync. Compares real last-edit timestamps and only pulls cloud data down if it's actually newer than local — never silently overwrites a newer local edit. If the piece has synced audio, it's fetched and auto-loaded directly from Storage, skipping the manual file-picker entirely. Library/Collection registries are pulled down alongside it so libraryId/collectionIds resolve correctly. <strong style="color:var(--text)">Timestamp fix:</strong> syncing no longer overwrites a piece's real last-edited time with the sync moment — that bug would have broken the newest-wins comparison this relies on. <strong style="color:var(--text)">Renamed:</strong> the Firestore "meta" documents are now called "organization" (libraries/collections), more descriptive when browsing the console.<br>
-
-      <div class="doc-h">WHAT'S NEW IN v8.6</div>
-      · <strong style="color:var(--text)">Readable profile field added on sync:</strong> Each sync now also writes your email/name onto your account's top-level Firestore document (purely for legibility when browsing the Firebase console — the folder path itself still uses your Firebase Auth UID, since that's what the security rules correctly key on and it can't be renamed). No functional change to the app itself.<br>
-
-      <div class="doc-h">WHAT'S NEW IN v8.5</div>
-      · <strong style="color:var(--text)">Cloud sync — Phase 3, one piece at a time:</strong> New "☁ Sync [piece] to cloud" item in the ⋯ menu (only visible once signed in). Writes the currently-open piece's markers/segments/notes/library/collection data to Firestore, plus its audio to Storage if a real file is attached this session. Deliberately scoped to whichever single piece you trigger it on — per the phased plan, this gets stress-tested on one real piece before any bulk or automatic sync exists. localStorage is untouched either way; this only adds a cloud copy alongside it.<br>
-
-      <div class="doc-h">WHAT'S NEW IN v8.4</div>
-      · <strong style="color:var(--text)">Piece rows redesigned (color-coded library, dot-style collections):</strong> Each piece's library select is now color-coded — a stable color per library, so you can tell a piece's library at a glance without reading it. Collection membership is now small dots instead of full-text pills; a "+" reveals a compact picker to add/remove membership.<br>
-      · <strong style="color:var(--text)">Library/Collection management tucked behind a toggle:</strong> Adding, renaming, or deleting a library or collection is rare — it no longer sits visible in the main view. Click "⚙ Manage libraries & collections" to reveal it when you actually need it.<br>
-
-      <div class="doc-h">WHAT'S NEW IN v8.3</div>
-      · <strong style="color:var(--text)">Auto-assign now runs automatically on import:</strong> No more manual click needed — importing a backup immediately sorts any known piece name into its library, reported right in the import notice (e.g. "15 pieces imported · 15 auto-sorted into libraries"). The manual "auto-assign known pieces" link stays available for edge cases (pieces added by hand that happen to match a known name).<br>
-      · <strong style="color:var(--text)">Library delete button softened:</strong> The "×" on library/collection chips now fades to near-invisible until you hover the chip, rather than sitting permanently visible next to the name. Worth noting: it was never a true one-click delete — a confirmation dialog (showing the library name and exactly how many pieces would be affected) has always gated it — this fixes how it *looked*, not the underlying safety, which was already there.<br>
-      · <strong style="color:var(--text)">Backup and Advanced menus merged into one:</strong> The two small dropdown buttons from v8.2 are now a single "⋯" menu — Download backup / Restore from file, then an Advanced section with folder-sync and notes .txt import.<br>
-
-      <div class="doc-h">WHAT'S NEW IN v8.2</div>
-      · <strong style="color:var(--text)">Top bar decluttered:</strong> The always-visible Export/Import/Save now/Backup piece/Restore piece/Notes .txt/folder-connect row (7 controls) is now a single "↓ Backup ▾" dropdown (download/restore your whole library) plus a "⋯" Advanced menu (folder-sync, notes .txt import). <strong style="color:var(--text)">Removed entirely:</strong> "Save now" (redundant — autosave already runs on every change) and per-piece "Backup piece"/"Restore piece" (redundant with whole-library Backup). Folder-sync stays functional in the Advanced menu for now; worth revisiting once real cloud sync (Phase 3) exists, since it was solving the same problem cloud sync is meant to replace.<br>
-
-      <div class="doc-h">WHAT'S NEW IN v8.1</div>
-      · <strong style="color:var(--text)">Auto-assign known pieces:</strong> New link next to the Libraries chips. Importing an older, pre-Libraries backup (e.g. a plain export from before v7.6) lands its pieces in Uncategorised, since the automatic name-match only runs once, the very first time a library registry is created. This re-applies that same matching on demand — safe to run repeatedly, never overrides a piece that already has a library set.<br>
-
-      <div class="doc-h">WHAT'S NEW IN v8.0</div>
-      · <strong style="color:var(--text)">Google sign-in added (Firebase Phase 2):</strong> A sign-in banner now appears above the library panel, wired to the real <code>rehearsal-space-f1642</code> Firebase project. This is auth only — signing in has no effect on your pieces yet; everything still saves to localStorage exactly as before. First version marked with a major bump rather than another v7.x tick, since this is the first release where the app has any online capability at all (versus purely local iteration through v7.x). Data migration to Firestore/Storage is a separate, later step (Phase 3).<br>
-
-      <div class="doc-h">WHAT'S NEW IN v7.6</div>
-      · <strong style="color:var(--text)">Libraries + Collections replace flat categories:</strong> Libraries are a piece's permanent home — exactly one per piece, renameable, and built to support nesting later. Collections are flexible, non-exclusive groupings — a piece can sit in zero, one, or several at once (e.g. a concert setlist drawn from multiple libraries), independent of its library. Deleting a library never deletes piece data — affected pieces just move to Uncategorised. Deleting a collection only removes the tag from pieces; the pieces themselves are never touched. Existing pieces were migrated automatically on first load.<br>
-
-      <div class="doc-h">WHAT'S NEW IN v7.5</div>
-      · <strong style="color:var(--text)">MediaRecorder warm-up gap fixed:</strong> Recording start time is now captured on the first actual audio chunk rather than at the moment mediaRecorder.start() is called. This absorbs the ~130ms browser/hardware initialisation delay that was causing the reference track to play ahead of the recording.<br>
-
-      <div class="doc-h">WHAT'S NEW IN v7.4</div>
-      · Diagnostic build — measured MediaRecorder warm-up gap (133ms). No user-facing changes.<br>
-
-      <div class="doc-h">WHAT'S NEW IN v7.3</div>
-      · <strong style="color:var(--text)">Latency compensation sign fixed:</strong> The calibration was measuring mic delay correctly but applying the correction in the wrong direction — making sync worse rather than better. Fixed. Re-run calibration once to reapply with the corrected sign.<br>
-
-      <div class="doc-h">WHAT'S NEW IN v7.2</div>
-      · <strong style="color:var(--text)">Clip playback fixed:</strong> Recording clips can now be replayed any number of times. The AudioContext and source wiring are built once per clip and reused — previously they were rebuilt on every play, which caused the audio element to become permanently unplayable after the first listen.<br>
-      · <strong style="color:var(--text)">AudioContext leak fixed:</strong> Waveform peak decoding now uses a single shared context rather than creating and leaking one per clip.<br>
-
-      <div class="doc-h">WHAT'S NEW IN v7.1</div>
-      · <strong style="color:var(--text)">Category grouping in the library:</strong> Assign pieces to categories (Jazz, Solo, Duet, Pedagogy, etc.) using the dropdown on each library row or the category field when creating a new piece. The library displays collapsible category sections. Collapsed state is remembered across sessions. Categories build themselves from what you type — no predefined list.<br>
-      · <strong style="color:var(--text)">Autonumbering removed:</strong> Marker cascade and auto-incrementing removed entirely. Markers get a placeholder label (.) on creation; label them manually. Simpler and more predictable.<br>
-      · <strong style="color:var(--text)">Lead-in offset bug fixed:</strong> Recording start offset now accounts for the lead-in period. Reference track and recorded playing should align correctly in playback.<br>
-      · <strong style="color:var(--text)">Armed recording scope label fixed:</strong> _recScopeLabel was missing — now defined. Fixes a crash that could freeze the recorder when arming during a loop.<br>
-
-      <div class="doc-h">WHAT'S NEW IN v7.0</div>
-      · <strong style="color:var(--text)">Unified status vocabulary:</strong> Learning / Playing / Evolving replaces the old Stable / Fluent labels, applied consistently at both passage and piece level. Old data migrates automatically on load.<br>
-      · <strong style="color:var(--text)">Piece competence dot:</strong> Coloured dot on each library row — click to cycle Learning (red) / Playing (amber) / Evolving (green) / unset.<br>
-      · <strong style="color:var(--text)">Target date per piece:</strong> Set a target performance date on any library row. Sort library by target date.<br>
-      · <strong style="color:var(--text)">Library sort control:</strong> Sort by A–Z, by level, or by target date. Preference persisted across sessions.<br>
-      · <strong style="color:var(--text)">Piece creation without audio:</strong> Add a piece by name alone — load the audio file later.<br>
+      <div class="doc-h">FULL VERSION HISTORY</div>
+      Everything before v9.11 — including v7.0 through v9.10 — lives in <code>CHANGELOG-v10.0.md</code>, alongside this file. <strong style="color:var(--text)">Keep both updated together:</strong> when a new version ships, add its entry here, and move the oldest of the 3 entries above into <code>CHANGELOG-v10.0.md</code> instead of letting it just disappear.
 
       <div class="doc-h">FUTURE FEATURES</div>
       <div style="color:var(--accent);font-size:0.4rem;letter-spacing:0.1em;margin:0.3rem 0 0.1rem">NEAR-TERM — contained, low risk</div>
@@ -1144,20 +1072,6 @@ input[type=file]{display:none}
       <div style="color:var(--accent);font-size:0.4rem;letter-spacing:0.1em;margin:0.4rem 0 0.1rem">MEDIUM — moderate complexity</div>
       · Program mode — time-bound event (recital, audition) with ordered piece list, readiness picture, and preparation arc. Run-through mode belongs here.<br>
       · Highlight key areas — visual passage emphasis on waveform (colour-tinted region between marks)<br>
-
-      <div class="doc-h">WORKFLOW</div>
-      1. Select a piece from the Library — the file picker opens automatically.<br>
-      2. Press Play. Press <strong style="color:var(--text)">M</strong> to drop markers while listening.<br>
-      3. In Passages: pick Start → End markers, click Add. Click ⟳ to loop, ▶ to preview.<br>
-      4. Add notes in the Notes panel — saved automatically.<br>
-
-      <div class="doc-h">MARKER NAMING</div>
-      Markers get a placeholder label (.) on creation. Type any label you want — numbers, letters, bar numbers, rehearsal letters. No automatic renumbering.
-
-      <div class="doc-h">KEYBOARD</div>
-      SPACE play/pause · M mark · P play to next marker · ← −5s · → +10s ·
-      L loop active · Home back to start · Ctrl/⌘+Z undo ·
-      R record/stop · K discard last clip
     </div>
   </div>
 
@@ -1243,150 +1157,28 @@ if (libSort === 'date') libSort = 'alpha'; // 'by target date' removed — fall 
 // as __order__, so existing export/import/folder-sync code carries them
 // automatically with no changes needed there.
 
-const META_KEYS = ['__order__', '__libraries__', '__collections__'];
+const META_KEYS = ['__order__', '__collections__'];
 function _isMetaKey(k) { return META_KEYS.includes(k); }
 
 function _newId(prefix) {
   return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
-// Stable color per library, so a library's color doesn't shift as other
-// libraries are added/removed — hashed from its id (constant for its life),
-// not its position in a sorted list.
-const LIB_COLOR_PALETTE = ['#4a7ec4','#c4922a','#4a9e6a','#c45a4a','#9a6ac4','#4ac4b0','#c46a9a','#8a9e4a'];
-function _libColor(libId) {
-  if (!libId) return '#5a5550'; // Uncategorised — neutral
-  let hash = 0;
-  for (let i = 0; i < libId.length; i++) hash = (hash * 31 + libId.charCodeAt(i)) >>> 0;
-  return LIB_COLOR_PALETTE[hash % LIB_COLOR_PALETTE.length];
-}
-
-// Known real-piece → library name mapping, used only for the one-time
-// migration of pre-existing data (matches the May 2026 library export).
-// Anything not listed here falls back to Uncategorised rather than guessing.
-const _MIGRATION_LIBRARY_MAP = {
-  'Dvorak Quartet 12-I': 'Ensemble',
-  'Dvorak Quartet 12-II': 'Ensemble',
-  'Borodin Quartet 2-I': 'Ensemble',
-  'Borodin Quartet 2-III': 'Ensemble',
-  'Villa Lobos - Etude 1': 'Solo',
-  'Villa Lobos - Etude 2': 'Solo',
-  'Villa Lobos - Etude 4': 'Solo',
-  'Villa Lobos - Etude 5': 'Solo',
-  'Villa Lobos - Etude 7': 'Solo',
-  'Imogen Heap - Hide and Seek': 'Pop',
-  'Sweet Disposition': 'Pop',
-  'Birds of a Feather': 'Pop',
-  'Innerbloom': 'Pop',
-  'Halo (midi)': 'Pop',
-  'Jashn e Bahara': 'Pop'
-};
-
-// Runs once: creates the __libraries__/__collections__ registries if absent,
-// auto-assigns known real pieces into them by name, and back-fills
-// libraryId/collectionIds on any piece missing those fields. Guarded by the
-// presence of __libraries__ so it never re-runs and clobbers later edits.
-// Returns true if it performed first-time migration (caller should persist).
-function _ensureLibrariesInitialized(sessions) {
+// Runs once: creates the __collections__ registry if absent, and back-fills
+// collectionIds on any piece missing the field. Returns true if it performed
+// first-time migration (caller should persist).
+// v10: library architecture (a mutually-exclusive per-piece category) was
+// removed — Collections already cover the actual need (multi-membership
+// across genre/function/event), so there's no separate registry to migrate.
+function _ensureCollectionsInitialized(sessions) {
   let migrated = false;
-  if (!sessions.__libraries__) {
-    migrated = true;
-    const defaults = ['Solo', 'Ensemble', 'Jazz', 'Pop'];
-    const libs = {};
-    const nameToId = {};
-    defaults.forEach(n => {
-      const id = _newId('lib');
-      libs[id] = { id, name: n, parentId: null };
-      nameToId[n] = id;
-    });
-    sessions.__libraries__ = libs;
-    if (!sessions.__collections__) sessions.__collections__ = {};
-    Object.keys(sessions).filter(k => !_isMetaKey(k)).forEach(k => {
-      const s = sessions[k];
-      if (s.libraryId === undefined) {
-        const libName = _MIGRATION_LIBRARY_MAP[s.pieceName || k];
-        s.libraryId = libName ? (nameToId[libName] || null) : null;
-      }
-      if (!Array.isArray(s.collectionIds)) s.collectionIds = [];
-    });
-  }
   if (!sessions.__collections__) { sessions.__collections__ = {}; migrated = true; }
-  // Safety net for any piece objects (e.g. from a later import) missing the fields
   Object.keys(sessions).filter(k => !_isMetaKey(k)).forEach(k => {
     const s = sessions[k];
-    if (s.libraryId === undefined) s.libraryId = null;
     if (!Array.isArray(s.collectionIds)) s.collectionIds = [];
     if (s.archived === undefined) s.archived = false;
   });
   return migrated;
-}
-
-// Library collapse state — persisted in localStorage, keyed by library id
-// (not name) so renaming a library never resets its collapsed/open state.
-const LIB_COLLAPSED_KEY = 'rs_lib_collapsed_v2';
-function _getLibCollapsed() {
-  try { return JSON.parse(localStorage.getItem(LIB_COLLAPSED_KEY) || '{}'); } catch(e) { return {}; }
-}
-function _setLibCollapsed(obj) {
-  try { localStorage.setItem(LIB_COLLAPSED_KEY, JSON.stringify(obj)); } catch(e) {}
-}
-function toggleLibraryCollapse(libKey) {
-  const state = _getLibCollapsed();
-  state[libKey] = !state[libKey];
-  _setLibCollapsed(state);
-  renderSessionsList();
-}
-
-// ── Library CRUD ──
-async function createLibrary(name, parentId) {
-  const trimmed = (name || '').trim();
-  if (!trimmed) return null;
-  const sessions = await loadSessionsFromStorage();
-  const id = _newId('lib');
-  sessions.__libraries__[id] = { id, name: trimmed, parentId: parentId || null };
-  await saveSessionsToStorage(sessions);
-  renderSessionsList();
-  return id;
-}
-
-async function renameLibrary(id) {
-  const sessions = await loadSessionsFromStorage();
-  const lib = sessions.__libraries__[id];
-  if (!lib) return;
-  const newName = prompt('Rename library:', lib.name);
-  if (!newName || !newName.trim()) return;
-  lib.name = newName.trim();
-  await saveSessionsToStorage(sessions);
-  renderSessionsList();
-}
-
-async function deleteLibrary(id) {
-  const sessions = await loadSessionsFromStorage();
-  const lib = sessions.__libraries__[id];
-  if (!lib) return;
-  const affected = Object.keys(sessions).filter(k => !_isMetaKey(k) && sessions[k].libraryId === id);
-  const msg = affected.length
-    ? `Delete library "${lib.name}"? ${affected.length} piece${affected.length!==1?'s':''} will move to Uncategorised.\n\nThis never deletes piece data — audio, markers, passages, notes and recordings are all untouched.`
-    : `Delete library "${lib.name}"?`;
-  if (!confirm(msg)) return;
-  affected.forEach(k => { sessions[k].libraryId = null; });
-  delete sessions.__libraries__[id];
-  await saveSessionsToStorage(sessions);
-  renderSessionsList();
-  // Best-effort: also remove it from the cloud registry so it doesn't come
-  // back on a future pull (see cloudDeleteLibrary's comment). The local
-  // deletion above already stands regardless of whether this succeeds.
-  if (_cloudSignedIn() && typeof window.cloudDeleteLibrary === 'function') {
-    window.cloudDeleteLibrary(id);
-  }
-}
-
-async function setPieceLibrary(name, libId) {
-  const sessions = await loadSessionsFromStorage();
-  if (!sessions[name]) return;
-  sessions[name].libraryId = libId || null;
-  await saveSessionsToStorage(sessions);
-  renderSessionsList();
 }
 
 // One-time manual cleanup for libraries/collections that were duplicated by
@@ -1434,7 +1226,6 @@ async function checkForCloudOnlyPieces() {
       segmentIdCounter: cloudData.segmentIdCounter || 0,
       notes: cloudData.notes || '',
       competence: cloudData.competence || null,
-      libraryId: cloudData.libraryId || null,
       collectionIds: Array.isArray(cloudData.collectionIds) ? cloudData.collectionIds : [],
       savedAt: cloudData.savedAt || Date.now(),
       archived: false
@@ -1443,68 +1234,6 @@ async function checkForCloudOnlyPieces() {
   }
   renderSessionsList();
   alert(`Added ${missing.length} piece${missing.length!==1?'s':''}. Open ${missing.length!==1?'them':'it'} to pull down the audio.`);
-}
-
-async function mergeDuplicateLibrariesAndCollections() {
-  closeHdrMenus();
-  const sessions = await loadSessionsFromStorage();
-  const pieceKeys = Object.keys(sessions).filter(k => !_isMetaKey(k));
-
-  function findDupGroups(registry) {
-    const byName = {};
-    Object.values(registry || {}).forEach(item => {
-      const key = (item.name || '').trim().toLowerCase();
-      (byName[key] = byName[key] || []).push(item);
-    });
-    return Object.values(byName).filter(g => g.length > 1);
-  }
-
-  const libDupGroups = findDupGroups(sessions.__libraries__);
-  const colDupGroups = findDupGroups(sessions.__collections__);
-
-  if (!libDupGroups.length && !colDupGroups.length) {
-    alert('No duplicate libraries or collections found in this browser.');
-    return;
-  }
-
-  const summaryLines = [
-    ...libDupGroups.map(g => `Library "${g[0].name}" — ${g.length} copies`),
-    ...colDupGroups.map(g => `Collection "${g[0].name}" — ${g.length} copies`)
-  ];
-  const ok = confirm(
-    `Found:\n\n${summaryLines.join('\n')}\n\n` +
-    `Merge each group into a single entry? Pieces keep their assignment, ` +
-    `just re-pointed to one shared entry instead of a duplicate.\n\n` +
-    `This only cleans up THIS browser. If you use another browser/device, ` +
-    `open this same menu item there afterward too.`
-  );
-  if (!ok) return;
-
-  libDupGroups.forEach(group => {
-    const [keeper, ...losers] = group;
-    const loserIds = losers.map(l => l.id);
-    pieceKeys.forEach(k => {
-      if (loserIds.includes(sessions[k].libraryId)) sessions[k].libraryId = keeper.id;
-    });
-    loserIds.forEach(id => { delete sessions.__libraries__[id]; });
-  });
-
-  colDupGroups.forEach(group => {
-    const [keeper, ...losers] = group;
-    const loserIds = losers.map(l => l.id);
-    pieceKeys.forEach(k => {
-      if (Array.isArray(sessions[k].collectionIds)) {
-        sessions[k].collectionIds = sessions[k].collectionIds.map(cid => loserIds.includes(cid) ? keeper.id : cid);
-        // de-dupe in case a piece somehow ended up referencing both the keeper and a loser
-        sessions[k].collectionIds = [...new Set(sessions[k].collectionIds)];
-      }
-    });
-    loserIds.forEach(id => { delete sessions.__collections__[id]; });
-  });
-
-  await saveSessionsToStorage(sessions);
-  renderSessionsList();
-  alert('Duplicates merged in this browser. Repeat on any other browser/device you use.');
 }
 
 // ── Collection CRUD ──
@@ -1554,11 +1283,11 @@ async function unarchiveCollection(id) {
   renderSessionsList();
 }
 
-async function deleteCollectionPermanently(id) {
+async function deleteCollectionPermanently(id, skipConfirm) {
   const sessions = await loadSessionsFromStorage();
   const col = sessions.__collections__[id];
   if (!col) return;
-  if (!confirm(`Permanently delete collection "${col.name}"?\n\nThis can't be undone. As always, the pieces themselves — audio, markers, notes — are never affected; this just removes the tag.`)) return;
+  if (!skipConfirm && !confirm(`Permanently delete collection "${col.name}"?\n\nThis can't be undone. As always, the pieces themselves — audio, markers, notes — are never affected; this just removes the tag.`)) return;
   delete sessions.__collections__[id];
   Object.keys(sessions).filter(k => !_isMetaKey(k)).forEach(k => {
     if (Array.isArray(sessions[k].collectionIds)) {
@@ -1587,6 +1316,49 @@ async function togglePieceCollection(name, colId) {
   renderSessionsList();
 }
 
+// v10: lets a collection be created right from the row's "+" picker,
+// without a round trip to the Manage panel — since Collections now carry
+// the app's entire taxonomy (genre/function/event), creating one is a
+// frequent action, not a rare one. Immediately assigns the new collection
+// to the piece it was created from, and shows a brief undo affordance —
+// undoing a *just-created, still-empty* collection is safe to do without
+// the usual archive-first confirmation, since nothing else references it yet.
+async function createCollectionInlineAndAssign(rawName, pieceName) {
+  const trimmed = (rawName || '').trim();
+  if (!trimmed) return;
+  const id = await createCollection(trimmed);
+  if (!id) return;
+  await togglePieceCollection(pieceName, id);
+  _showUndoToast(`Created "${trimmed}"`, async () => {
+    await togglePieceCollection(pieceName, id);
+    await deleteCollectionPermanently(id, /* skipConfirm */ true);
+  });
+}
+
+// Generic small toast with an "undo" link, auto-dismissing after a few
+// seconds. Used anywhere a create action needs a roundtrip back to
+// nothing, right where the action happened, rather than a trip to a
+// different part of the screen.
+let _undoToastTimer = null;
+function _showUndoToast(message, onUndo) {
+  let el = document.getElementById('undo-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'undo-toast';
+    el.className = 'undo-toast';
+    document.body.appendChild(el);
+  }
+  el.innerHTML = `<span>${escHtml(message)}</span> — <button class="undo-toast-btn">undo?</button>`;
+  el.querySelector('.undo-toast-btn').onclick = async () => {
+    clearTimeout(_undoToastTimer);
+    el.remove();
+    await onUndo();
+  };
+  el.style.display = '';
+  clearTimeout(_undoToastTimer);
+  _undoToastTimer = setTimeout(() => { el.style.display = 'none'; }, 6000);
+}
+
 // ── View filter: show only pieces in a given active collection ──
 let collectionFilter = '';
 function setCollectionFilter(id) {
@@ -1594,57 +1366,7 @@ function setCollectionFilter(id) {
   renderSessionsList();
 }
 
-// ── Manager strip renderers (library chips / collection chips) ──
-
-// Pure helper: mutates `sessions` in place, assigning any currently-
-// Uncategorised piece into its known library by matching piece name against
-// the same lookup table used during first-time migration. Never overrides
-// a piece that already has a library set. Returns the count assigned.
-// Used automatically after every import, and available as a manual re-run
-// via the "auto-assign known pieces" link for edge cases.
-function _autoAssignByName(sessions) {
-  const libsByName = {};
-  Object.values(sessions.__libraries__ || {}).forEach(l => { libsByName[l.name] = l.id; });
-  let count = 0;
-  Object.keys(sessions).filter(k => !_isMetaKey(k)).forEach(k => {
-    const s = sessions[k];
-    if (s.libraryId) return; // already assigned — never override
-    const libName = _MIGRATION_LIBRARY_MAP[s.pieceName || k];
-    if (libName && libsByName[libName]) {
-      s.libraryId = libsByName[libName];
-      count++;
-    }
-  });
-  return count;
-}
-
-// Manual re-run, for cases outside the normal import flow (e.g. pieces
-// added by hand that happen to match a known name).
-async function autoAssignKnownLibraries() {
-  const sessions = await loadSessionsFromStorage();
-  const count = _autoAssignByName(sessions);
-  await saveSessionsToStorage(sessions);
-  renderSessionsList();
-  alert(count
-    ? `✓ Assigned ${count} piece${count!==1?'s':''} to their libraries by name.`
-    : 'No Uncategorised pieces matched a known piece name.');
-}
-
-async function renderLibraryManager() {
-  const el = document.getElementById('library-manager');
-  if (!el) return;
-  const sessions = await loadSessionsFromStorage();
-  const libs = Object.values(sessions.__libraries__ || {}).sort((a, b) => a.name.localeCompare(b.name));
-  const chips = libs.map(l => `<span class="lib-chip">
-      <span ondblclick="renameLibrary('${l.id}')" title="Double-click to rename">${escHtml(l.name)}</span>
-      <span class="lib-chip-del" onclick="deleteLibrary('${l.id}')" title="Delete library — pieces move to Uncategorised, piece data is never deleted">✕</span>
-    </span>`).join('');
-  el.innerHTML = `<span class="lib-chip-label">Libraries</span>${chips}
-    <input class="lib-chip-add-input" id="new-library-input" placeholder="+ New library…"
-      onkeydown="if(event.key==='Enter'){createLibrary(this.value);this.value='';}">
-    <span class="lib-chip-link" onclick="autoAssignKnownLibraries()" title="Assign any Uncategorised piece into its known library by name — useful right after importing an older backup">auto-assign known pieces</span>`;
-  _refreshNewPieceLibrarySelect();
-}
+// ── Manager strip renderer (collection chips) ──
 
 async function renderCollectionManager() {
   const el = document.getElementById('collection-manager');
@@ -1655,7 +1377,7 @@ async function renderCollectionManager() {
   const archived = all.filter(c => c.archived).sort((a, b) => a.name.localeCompare(b.name));
   const chips = active.map(c => `<span class="lib-chip">
       <span ondblclick="renameCollection('${c.id}')" title="Double-click to rename">${escHtml(c.name)}</span>
-      <span class="lib-chip-del" onclick="archiveCollection('${c.id}')" title="Archive — pieces keep their tag history, just stops showing here">✕</span>
+      <span class="lib-chip-del" onclick="archiveCollection('${c.id}')" title="Archive — pieces keep their tag history, just stops showing here">📦</span>
     </span>`).join('');
   let archivedHtml = '';
   if (archived.length) {
@@ -1663,7 +1385,7 @@ async function renderCollectionManager() {
       ? `<div style="width:100%;display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.25rem">
           ${archived.map(c => `<span class="lib-chip" style="opacity:0.55">
             <span>${escHtml(c.name)}</span>
-            <span class="lib-chip-del" onclick="unarchiveCollection('${c.id}')" title="Restore">↺</span>
+            <span class="lib-chip-del" onclick="unarchiveCollection('${c.id}')" title="Restore">↩</span>
             <span class="lib-chip-del" onclick="deleteCollectionPermanently('${c.id}')" title="Delete permanently">✕</span>
           </span>`).join('')}
           <span class="lib-chip-link" onclick="toggleArchivedCollectionsView()">hide archived</span>
@@ -1674,16 +1396,6 @@ async function renderCollectionManager() {
     <input class="lib-chip-add-input" id="new-collection-input" placeholder="+ New collection…"
       onkeydown="if(event.key==='Enter'){createCollection(this.value);this.value='';}">
     ${archivedHtml}`;
-}
-
-// Populate the "Library" <select> in the add-new-piece form
-async function _refreshNewPieceLibrarySelect() {
-  const sel = document.getElementById('new-piece-library');
-  if (!sel) return;
-  const sessions = await loadSessionsFromStorage();
-  const libs = Object.values(sessions.__libraries__ || {}).sort((a, b) => a.name.localeCompare(b.name));
-  sel.innerHTML = `<option value="">— uncategorised —</option>` +
-    libs.map(l => `<option value="${l.id}">${escHtml(l.name)}</option>`).join('');
 }
 
 function _migrateStatusLabels(segs) {
@@ -1749,12 +1461,9 @@ function _restoreSectionCollapse(id, defaultCollapsed) {
   arrow.textContent = isCollapsed ? '▸' : '▾';
 }
 
-// ── Header dropdown menu: single consolidated ⋯ menu ──
-function toggleHdrMenu(which) {
-  const target = document.getElementById('tools-menu');
-  _updateCloudSyncMenuItem();
-  target.classList.toggle('open');
-}
+// closeHdrMenus is a safe no-op once #tools-menu no longer exists (v10 —
+// see toggleManagePanel below) — left in place since several call sites
+// still reference it after actions and it costs nothing to leave inert.
 function closeHdrMenus() {
   document.getElementById('tools-menu')?.classList.remove('open');
 }
@@ -1801,22 +1510,7 @@ function _setCloudStatus(state) {
     synced: '☁ synced', error: '☁ sync error — click to retry'
   };
   badge.textContent = labels[state] || '';
-  badge.title = state === 'error' ? 'Last cloud sync failed — click "↻ Sync now" in the ⋯ menu, or it will retry on your next edit' : '';
-}
-
-function _updateCloudSyncMenuItem() {
-  const btn = document.getElementById('cloud-force-btn');
-  const badge = document.getElementById('cloud-status-badge');
-  if (!btn) return;
-  const user = _cloudSignedIn();
-  if (!user) {
-    btn.style.display = 'none';
-    if (badge) badge.style.display = 'none';
-    return;
-  }
-  btn.style.display = '';
-  btn.disabled = !currentPieceName;
-  btn.style.opacity = currentPieceName ? '' : '0.4';
+  badge.title = state === 'error' ? 'Last cloud sync failed — click to retry, or it will retry on your next edit' : '';
 }
 
 // Assembles the currently-open piece's data in the exact shape Firestore
@@ -1844,7 +1538,6 @@ async function _assembleCloudPieceData(pieceName, sessions) {
     segmentIdCounter: s.segmentIdCounter || (isOpen ? segmentIdCounter : 0) || 0,
     notes: isOpen ? (document.getElementById('piece-notes')?.value ?? (s.notes || '')) : (s.notes || ''),
     competence: s.competence || null,
-    libraryId: s.libraryId || null,
     collectionIds: Array.isArray(s.collectionIds) ? s.collectionIds : [],
     // Always freshly stamped at push time, never a stale stored value — see
     // the block comment above. This is what makes "newest wins" pulls
@@ -1875,16 +1568,7 @@ async function _bulkPullMetadataOnly(name, sessions) {
     _pieceContentSignature(cloudData) !== _pieceContentSignature(localData);
   if (localData && !isStale && !isTiedButDifferent) return false; // local already current and matches
 
-  const { libraries, collections } = await window.cloudFetchLibrariesAndCollections();
-  const libIdTranslate = {};
-  const localLibByName = {};
-  Object.values(sessions.__libraries__ || {}).forEach(l => { localLibByName[(l.name||'').trim().toLowerCase()] = l.id; });
-  Object.keys(libraries || {}).forEach(cid => {
-    const clib = libraries[cid];
-    const key = (clib.name||'').trim().toLowerCase();
-    if (localLibByName[key]) { libIdTranslate[cid] = localLibByName[key]; }
-    else if (!sessions.__libraries__[cid]) { sessions.__libraries__[cid] = clib; }
-  });
+  const { collections } = await window.cloudFetchLibrariesAndCollections();
   const colIdTranslate = {};
   const localColByName = {};
   Object.values(sessions.__collections__ || {}).forEach(c => { localColByName[(c.name||'').trim().toLowerCase()] = c.id; });
@@ -1905,7 +1589,6 @@ async function _bulkPullMetadataOnly(name, sessions) {
     segmentIdCounter: cloudData.segmentIdCounter || 0,
     notes: cloudData.notes || '',
     competence: cloudData.competence || null,
-    libraryId: cloudData.libraryId ? (libIdTranslate[cloudData.libraryId] || cloudData.libraryId) : null,
     collectionIds: Array.isArray(cloudData.collectionIds)
       ? cloudData.collectionIds.map(cid => colIdTranslate[cid] || cid)
       : [],
@@ -1968,7 +1651,7 @@ async function syncAllPiecesNow() {
       if (pieceData && typeof window.cloudSyncCurrentPiece === 'function') {
         const includeAudio = (name === currentPieceName) ? currentAudioFile : null;
         const result = await window.cloudSyncCurrentPiece(name, pieceData, includeAudio,
-          forPush.__libraries__ || {}, forPush.__collections__ || {});
+          forPush.__collections__ || {});
         if (result?.ok) {
           const afterPush = await loadSessionsFromStorage();
           if (afterPush[name]) {
@@ -2006,7 +1689,7 @@ function _pieceContentSignature(d) {
   try {
     return JSON.stringify({
       markers: d.markers || [], segments: d.segments || [], notes: d.notes || '',
-      competence: d.competence || null, libraryId: d.libraryId || null,
+      competence: d.competence || null,
       collectionIds: d.collectionIds || [], audioFileName: d.audioFileName || ''
     });
   } catch(e) { return ''; }
@@ -2021,7 +1704,7 @@ async function _pushCloudNow(includeAudio) {
   if (!pieceData) return;
   _setCloudStatus(includeAudio ? 'pushing' : 'pushing');
   const result = await window.cloudSyncCurrentPiece(pieceName, pieceData,
-    includeAudio ? currentAudioFile : null, sessions.__libraries__ || {}, sessions.__collections__ || {});
+    includeAudio ? currentAudioFile : null, sessions.__collections__ || {});
   _setCloudStatus(result?.ok ? 'synced' : 'error');
   if (result?.ok) {
     // Keep the local record in sync with exactly what was just pushed,
@@ -2079,29 +1762,17 @@ async function _autoCloudPullOnOpen(name, myGen) {
 
     if (metadataIsNewer) {
       _setCloudStatus('pulling');
-      const { libraries, collections } = await window.cloudFetchLibrariesAndCollections();
+      const { collections } = await window.cloudFetchLibrariesAndCollections();
 
       // Reconcile by NAME, not by id. Every browser bootstraps its own
-      // default libraries/collections with fresh random ids the first time
-      // it ever opens the app (see _ensureLibrariesInitialized) — so two
-      // devices independently create their own "Solo"/"Ensemble"/etc, each
-      // with a different id. Merging by id (the old behavior) treated the
-      // cloud's differently-id'd "Solo" as a brand new library and added it
-      // alongside the local one, producing a visible duplicate — and this
-      // compounds with every additional device. Instead: if a local entry
-      // with the same (trimmed, case-insensitive) name already exists, don't
-      // import the cloud copy at all — just remember a translation from the
-      // cloud id to the existing local id, so any piece referencing the
-      // cloud id below still resolves to the correct (single, local) entry.
-      const libIdTranslate = {};
-      const localLibByName = {};
-      Object.values(sessions.__libraries__ || {}).forEach(l => { localLibByName[(l.name||'').trim().toLowerCase()] = l.id; });
-      Object.keys(libraries || {}).forEach(cid => {
-        const clib = libraries[cid];
-        const key = (clib.name||'').trim().toLowerCase();
-        if (localLibByName[key]) { libIdTranslate[cid] = localLibByName[key]; }
-        else if (!sessions.__libraries__[cid]) { sessions.__libraries__[cid] = clib; }
-      });
+      // default collections with fresh random ids the first time it ever
+      // opens the app, so two devices independently creating a collection
+      // with the same name would otherwise show up as two separate entries
+      // once merged by id. Instead: if a local entry with the same
+      // (trimmed, case-insensitive) name already exists, don't import the
+      // cloud copy at all — just remember a translation from the cloud id
+      // to the existing local id, so any piece referencing the cloud id
+      // below still resolves to the correct (single, local) entry.
       const colIdTranslate = {};
       const localColByName = {};
       Object.values(sessions.__collections__ || {}).forEach(c => { localColByName[(c.name||'').trim().toLowerCase()] = c.id; });
@@ -2122,7 +1793,6 @@ async function _autoCloudPullOnOpen(name, myGen) {
         segmentIdCounter: cloudData.segmentIdCounter || 0,
         notes: cloudData.notes || '',
         competence: cloudData.competence || null,
-        libraryId: cloudData.libraryId ? (libIdTranslate[cloudData.libraryId] || cloudData.libraryId) : null,
         collectionIds: Array.isArray(cloudData.collectionIds) ? cloudData.collectionIds.map(cid => colIdTranslate[cid] || cid) : [],
         savedAt: cloudSavedAt
       };
@@ -2197,12 +1867,16 @@ function toggleCollectionPicker(pickerId) {
   document.querySelectorAll('.lib-collection-picker.open').forEach(p => p.classList.remove('open'));
   if (!isOpen) el.classList.add('open');
 }
-function toggleLibManagePanel() {
-  const panel = document.getElementById('lib-manage-panel');
-  const toggle = document.getElementById('lib-manage-toggle');
+// v10: opens the single consolidated Manage panel (Collections / Data &
+// Sync / Storage). Refreshes the Storage list on open since it can go
+// stale while closed (audio uploads/deletes happen elsewhere).
+function toggleManagePanel() {
+  const panel = document.getElementById('manage-panel');
+  const btn = document.getElementById('manage-panel-btn');
   const open = panel.style.display !== 'none';
   panel.style.display = open ? 'none' : '';
-  toggle.textContent = open ? '⚙ Manage libraries & collections' : '⚙ Hide libraries & collections';
+  btn.classList.toggle('active', !open);
+  if (!open && typeof renderStorageUsagePanel === 'function') renderStorageUsagePanel();
 }
 document.addEventListener('click', (e) => {
   if (!e.target.closest('.hdr-menu-wrap')) closeHdrMenus();
@@ -2237,7 +1911,6 @@ function _updatePieceTitle() {
     el.classList.add('empty');
     if (replaceBtn) replaceBtn.style.display = 'none';
   }
-  _updateCloudSyncMenuItem();
 }
 
 // Returns a Promise that resolves once the async decode (waveform, duration,
@@ -3442,19 +3115,6 @@ function saveSession() {
   } catch(e) {}
   // Sync back to named library entry so piece-level edits persist
   if (currentPieceName) _autosaveToLibrary();
-  // Also write to folder if connected
-  if (rsRootHandle && currentPieceName) {
-    const notes = document.getElementById('piece-notes')
-      ? document.getElementById('piece-notes').value : '';
-    const sessionData = {
-      piece: currentPieceName, audio: audioFileName,
-      version: 'rs_v1', savedAt: Date.now(),
-      markers: markers.map(m => ({...m})),
-      loops: segments.map(s => ({...s})),
-      markerIdCounter, segmentIdCounter
-    };
-    _saveSessionToFolder(currentPieceName, sessionData, notes).catch(() => {});
-  }
 }
 
 // Silently sync current state back into mr_sessions_v4 so all edits persist.
@@ -3521,7 +3181,7 @@ async function loadSessionsFromStorage() {
     const raw = localStorage.getItem(SESSIONS_STORAGE_KEY);
     sessions = raw ? JSON.parse(raw) : {};
   } catch(e) { sessions = {}; }
-  const migrated = _ensureLibrariesInitialized(sessions);
+  const migrated = _ensureCollectionsInitialized(sessions);
   if (migrated) await saveSessionsToStorage(sessions);
   return sessions;
 }
@@ -3536,8 +3196,6 @@ async function addNewPiece() {
   const input = document.getElementById('new-piece-input');
   const name = input ? input.value.trim() : '';
   if (!name) { if (input) input.focus(); return; }
-  const libSelect = document.getElementById('new-piece-library');
-  const libraryId = libSelect ? (libSelect.value || null) : null;
 
   // Check if piece already exists
   const sessions = await loadSessionsFromStorage();
@@ -3554,7 +3212,6 @@ async function addNewPiece() {
     markers: [], markerIdCounter: 0,
     segments: [], segmentIdCounter: 0,
     notes: '', savedAt: Date.now(),
-    libraryId: libraryId || null,
     collectionIds: []
   };
   const order = sessions.__order__ || [];
@@ -3646,14 +3303,6 @@ async function loadNamedSession(name, opts = {}) {
   }
 }
 
-let showStorageUsage = false;
-function toggleStorageUsagePanel() {
-  showStorageUsage = !showStorageUsage;
-  const panel = document.getElementById('storage-usage-panel');
-  if (panel) panel.style.display = showStorageUsage ? '' : 'none';
-  renderStorageUsagePanel();
-}
-
 // Mirrors _slugifyPieceId in the Firebase module script (kept in sync by
 // comment cross-reference) — needed here only to translate a Storage
 // filename back into a readable piece name for display.
@@ -3663,7 +3312,8 @@ function _slugForPieceMatch(name) {
 
 async function renderStorageUsagePanel() {
   const el = document.getElementById('storage-usage-list');
-  if (!el || !showStorageUsage) return;
+  const managePanel = document.getElementById('manage-panel');
+  if (!el || !managePanel || managePanel.style.display === 'none') return;
   if (!_cloudSignedIn()) { el.innerHTML = '<span class="lib-empty">Sign in to view cloud storage.</span>'; return; }
   if (typeof window.cloudGetStorageUsage !== 'function') { el.innerHTML = '<span class="lib-empty">Not available.</span>'; return; }
   el.innerHTML = '<span class="lib-empty">Loading…</span>';
@@ -3784,43 +3434,17 @@ async function unarchivePiece(name) {
   }
 }
 
+// v10: archived pieces are no longer a separate panel — they render
+// inline in the main list (dimmed, sorted to the bottom) via
+// _renderPieceRow + renderSessionsList, toggled by this single flag.
+// Restoring/deleting an archived piece now happens on the same row it was
+// archived from, not in a different part of the screen.
 let showArchivedPieces = false;
-function toggleArchivedPiecesPanel() {
+function toggleShowArchivedPieces() {
   showArchivedPieces = !showArchivedPieces;
-  const panel = document.getElementById('archived-pieces-panel');
-  if (panel) panel.style.display = showArchivedPieces ? '' : 'none';
-  renderArchivedPiecesList();
-}
-
-async function renderArchivedPiecesList() {
-  const toggleBtn = document.getElementById('archived-pieces-toggle');
-  const el = document.getElementById('archived-pieces-list');
-  const sessions = await loadSessionsFromStorage();
-  const archivedKeys = Object.keys(sessions).filter(k => !_isMetaKey(k) && sessions[k].archived)
-    .sort((a, b) => a.localeCompare(b));
-  if (toggleBtn) toggleBtn.textContent = `📦 Archived pieces (${archivedKeys.length})`;
-  if (!el || !showArchivedPieces) return;
-  if (!archivedKeys.length) {
-    el.innerHTML = `<span class="lib-empty">No archived pieces.</span>`;
-    return;
-  }
-  el.innerHTML = archivedKeys.map(name => {
-    const safe = escHtml(name);
-    const safeJs = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-    const s = sessions[name];
-    const mc = (s.markers || []).length;
-    const sc = (s.segments || []).length;
-    return `<div class="lib-row" style="cursor:default">
-      <div class="lib-row-left">
-        <span class="lib-name">${safe}</span>
-        <span class="lib-meta">${mc} mark${mc!==1?'s':''} · ${sc} passage${sc!==1?'s':''}</span>
-      </div>
-      <div class="lib-row-right" style="gap:0.3rem">
-        <button class="lib-del" title="Restore to active library" onclick="unarchivePiece('${safeJs}')">↩</button>
-        <button class="lib-del" title="Delete permanently — cannot be undone" onclick="deleteNamedSession('${safeJs}')">✕</button>
-      </div>
-    </div>`;
-  }).join('');
+  const btn = document.getElementById('show-archived-toggle');
+  if (btn) btn.classList.toggle('active', showArchivedPieces);
+  renderSessionsList();
 }
 
 async function deleteNamedSession(name) {
@@ -3878,7 +3502,7 @@ let _dragSrcName = null;
 function setLibSort(mode) {
   libSort = mode;
   localStorage.setItem(LIB_SORT_KEY, mode);
-  ['alpha','competence'].forEach(m => {
+  ['alpha','competence','recent'].forEach(m => {
     const btn = document.getElementById('lib-sort-' + m);
     if (btn) btn.classList.toggle('active', m === mode);
   });
@@ -3915,6 +3539,7 @@ function _renderPieceRow(name, s, sessions) {
   const safeId = name.replace(/[^a-zA-Z0-9_-]/g, '_');
   const safeJs = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
   const isActive = name === currentPieceName;
+  const isArchived = !!s.archived;
   const fileLoaded = isActive && !!audioBuffer;
   const statusHtml = isActive
     ? (fileLoaded
@@ -3932,24 +3557,12 @@ function _renderPieceRow(name, s, sessions) {
     <option value="playing"${comp==='playing'?' selected':''}>Playing</option>
     <option value="evolving"${comp==='evolving'?' selected':''}>Evolving</option>
   </select>`;
-  // Library select — sourced from the __libraries__ registry (id-referenced,
-  // so renaming a library never desyncs this dropdown). Color-coded per
-  // library so you can tell a piece's library at a glance without reading it.
-  const libraries = sessions.__libraries__ || {};
-  const libList = Object.values(libraries).sort((a,b)=>a.name.localeCompare(b.name));
-  const libOptions = ['<option value="">— uncategorised —</option>',
-    ...libList.map(l=>`<option value="${l.id}"${s.libraryId===l.id?' selected':''}>${escHtml(l.name)}</option>`)
-  ].join('');
-  const libColor = _libColor(s.libraryId);
-  const libSelect = `<select class="lib-cat-select"
-    style="border-color:${libColor};color:${libColor};background:${libColor}1a"
-    onclick="event.stopPropagation()"
-    onchange="event.stopPropagation();setPieceLibrary('${safeJs}',this.value)"
-    title="Library">${libOptions}</select>`;
-  // Collection membership — small dots rather than full-text pills, since
-  // collections are secondary/temporary tags, not the primary identity a
-  // library is. Hover a dot to see which collection it represents. A small
-  // "+" reveals a compact picker to add/remove membership.
+  // Collection membership — small dots rather than full-text pills, since a
+  // piece can carry several at once (genre, function, event) and dots scan
+  // faster than a row of pills. Hover a dot to see which collection it
+  // represents. The "+" picker both toggles existing collections and, as of
+  // v10, can create a brand new one inline — no round trip to the Manage
+  // panel needed for the thing you'll do constantly.
   const collections = sessions.__collections__ || {};
   const activeCollections = Object.values(collections).filter(c=>!c.archived).sort((a,b)=>a.name.localeCompare(b.name));
   const pieceCollectionIds = Array.isArray(s.collectionIds) ? s.collectionIds : [];
@@ -3960,17 +3573,23 @@ function _renderPieceRow(name, s, sessions) {
         onclick="event.stopPropagation();togglePieceCollection('${safeJs}','${c.id}')"
         title="In collection: ${escHtml(c.name)} — click to remove"></span>`).join('')}
     </span>` : '';
-  const collectionAddHtml = activeCollections.length ? `<span class="lib-collection-picker-wrap">
+  const collectionAddHtml = `<span class="lib-collection-picker-wrap">
       <span class="lib-collection-add" onclick="event.stopPropagation();toggleCollectionPicker('${pickerId}')" title="Add to a collection">+</span>
       <div class="hdr-dropdown lib-collection-picker" id="${pickerId}">
         ${activeCollections.map(c => {
           const on = pieceCollectionIds.includes(c.id);
           return `<button class="hdr-dropdown-item" onclick="event.stopPropagation();togglePieceCollection('${safeJs}','${c.id}')">${on?'✓ ':''}${escHtml(c.name)}</button>`;
         }).join('')}
+        <input class="lib-chip-add-input" placeholder="+ New collection…"
+          onclick="event.stopPropagation()"
+          onkeydown="event.stopPropagation();if(event.key==='Enter'){createCollectionInlineAndAssign(this.value,'${safeJs}');this.value='';toggleCollectionPicker('${pickerId}');}">
       </div>
-    </span>` : '';
-  return `<div class="lib-row${isActive?' active':''}${rowStatusClass}"
-      data-name="${safe}" draggable="true"
+    </span>`;
+  const archiveActionHtml = isArchived
+    ? `<button class="lib-del" onclick="event.stopPropagation();unarchivePiece('${safeJs}')" title="Restore to active">↩</button>`
+    : `<button class="lib-del" onclick="event.stopPropagation();archivePiece('${safeJs}')" title="Archive — keeps all data, just hides from the active library">📦</button>`;
+  return `<div class="lib-row${isActive?' active':''}${isArchived?' archived':''}${rowStatusClass}"
+      data-name="${safe}" draggable="${isArchived?'false':'true'}"
       onclick="loadNamedSession('${safeJs}')"
       ondragstart="libDragStart(event,'${safeJs}')"
       ondragover="libDragOver(event)"
@@ -3985,10 +3604,9 @@ function _renderPieceRow(name, s, sessions) {
     </div>
     <div class="lib-row-right" style="gap:0.3rem">
       ${compSelect}
-      ${libSelect}
       <span class="lib-drag-handle" title="Drag to reorder">⠿</span>
       <span class="lib-date${lastPracticed.stale?' stale':''}" title="${lastPracticed.title}">🕓 ${lastPracticed.text}</span>
-      <button class="lib-del" onclick="event.stopPropagation();archivePiece('${safeJs}')" title="Archive — keeps all data, just hides from the active library">📦</button>
+      ${archiveActionHtml}
       <button class="lib-del" onclick="event.stopPropagation();deleteNamedSession('${safeJs}')" title="Remove">✕</button>
     </div>
   </div>`;
@@ -3998,12 +3616,17 @@ async function renderSessionsList() {
   const sessions = await loadSessionsFromStorage();
   const el = document.getElementById('sessions-list');
 
-  ['alpha','competence'].forEach(m => {
+  ['alpha','competence','recent'].forEach(m => {
     const btn = document.getElementById('lib-sort-' + m);
     if (btn) btn.classList.toggle('active', m === libSort);
   });
+  const archivedBtn = document.getElementById('show-archived-toggle');
+  if (archivedBtn) archivedBtn.classList.toggle('active', showArchivedPieces);
 
-  const allKeys = Object.keys(sessions).filter(k => !_isMetaKey(k) && !sessions[k].archived);
+  // v10: archived pieces are included inline (dimmed, sorted to the very
+  // bottom regardless of sort mode) when the "📦 Archived" toggle is on,
+  // instead of living in a separate panel.
+  const allKeys = Object.keys(sessions).filter(k => !_isMetaKey(k) && (!sessions[k].archived || showArchivedPieces));
   const storedOrder = sessions.__order__ || [];
   let orderedKeys = [
     ...storedOrder.filter(k => allKeys.includes(k)),
@@ -4019,16 +3642,25 @@ async function renderSessionsList() {
       const rb = competenceRank[sessions[b]?.competence || 'null'] ?? 3;
       return ra !== rb ? ra - rb : a.localeCompare(b);
     });
+  } else if (libSort === 'recent') {
+    orderedKeys = [...orderedKeys].sort((a, b) => (sessions[b]?.savedAt || 0) - (sessions[a]?.savedAt || 0));
   }
+  // Archived always sinks to the bottom, regardless of sort mode — it's
+  // there to browse occasionally, not to compete with active pieces for
+  // sort position.
+  orderedKeys = [...orderedKeys].sort((a, b) => (!!sessions[a]?.archived) - (!!sessions[b]?.archived));
 
-  // Collection filter — "what am I currently working on", independent of library
+  // Collection filter — "what am I currently working on"
   if (collectionFilter) {
     orderedKeys = orderedKeys.filter(name =>
       Array.isArray(sessions[name]?.collectionIds) && sessions[name].collectionIds.includes(collectionFilter)
     );
   }
 
-  // Populate the collection-filter dropdown (kept in sync with __collections__)
+  // Populate the collection-filter dropdown (kept in sync with __collections__).
+  // v10: now has a visible "Filter:" label instead of floating unlabeled —
+  // this became the primary way to slice the whole library once Collections
+  // took over library's old job too, so it needed to read as a real control.
   const filterWrap = document.getElementById('collection-filter-wrap');
   if (filterWrap) {
     const activeCollections = Object.values(sessions.__collections__ || {})
@@ -4037,62 +3669,23 @@ async function renderSessionsList() {
       const opts = ['<option value="">All pieces</option>',
         ...activeCollections.map(c => `<option value="${c.id}"${collectionFilter===c.id?' selected':''}>${escHtml(c.name)}</option>`)
       ].join('');
-      filterWrap.innerHTML = `<select class="lib-filter-select" onchange="setCollectionFilter(this.value)" title="Filter by collection">${opts}</select>`;
+      filterWrap.innerHTML = `<span class="lib-sort-label">Filter:</span><select class="lib-filter-select" onchange="setCollectionFilter(this.value)" title="Filter by collection">${opts}</select>`;
     } else {
       filterWrap.innerHTML = '';
     }
   }
 
-  renderLibraryManager();
   renderCollectionManager();
-  renderArchivedPiecesList();
 
   if (!orderedKeys.length) {
     el.innerHTML = `<span class="lib-empty">${collectionFilter ? 'No pieces in this collection.' : 'No pieces saved yet.'}</span>`;
     return;
   }
 
-  // Group by library
-  const groups = {}; // libraryId (or '__uncategorised__') -> [name, ...]
-  orderedKeys.forEach(name => {
-    const libId = sessions[name]?.libraryId || '';
-    const key = libId || '__uncategorised__';
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(name);
-  });
-
-  const libraries = sessions.__libraries__ || {};
-  // Order: libraries alphabetically by name, uncategorised last
-  const libKeys = Object.keys(groups)
-    .filter(k => k !== '__uncategorised__')
-    .sort((a, b) => (libraries[a]?.name || '').localeCompare(libraries[b]?.name || ''));
-  if (groups['__uncategorised__']) libKeys.push('__uncategorised__');
-
-  // If only one group (all uncategorised), render flat — no headers
-  if (libKeys.length === 1 && libKeys[0] === '__uncategorised__') {
-    el.innerHTML = orderedKeys.map(name => _renderPieceRow(name, sessions[name], sessions)).join('');
-    return;
-  }
-
-  const collapsed = _getLibCollapsed();
-  let html = '';
-  libKeys.forEach(libKey => {
-    const displayName = libKey === '__uncategorised__' ? 'Uncategorised' : (libraries[libKey]?.name || 'Unknown library');
-    const safeKey = escHtml(displayName);
-    const isOpen = !collapsed[libKey]; // default open
-    const pieces = groups[libKey];
-    html += `<div class="lib-category-hdr" onclick="toggleLibraryCollapse('${libKey}')">
-      <span class="lib-category-title">${safeKey}</span>
-      <span style="display:flex;align-items:center;gap:0.5rem">
-        <span class="lib-category-count">${pieces.length} piece${pieces.length!==1?'s':''}</span>
-        <span class="lib-category-arrow${isOpen?' open':''}">▸</span>
-      </span>
-    </div>
-    <div class="lib-category-body${isOpen?' open':''}">
-      ${pieces.map(name => _renderPieceRow(name, sessions[name], sessions)).join('')}
-    </div>`;
-  });
-  el.innerHTML = html;
+  // Library architecture was removed in v10 (folded into Collections, which
+  // already support the multi-membership use case libraries never did) — so
+  // the list always renders flat now, no grouping headers.
+  el.innerHTML = orderedKeys.map(name => _renderPieceRow(name, sessions[name], sessions)).join('');
 }
 
 function libDragStart(e, name) {
@@ -4156,8 +3749,6 @@ function exportLibraryJSON() {
     a.download = `rehearsal-space-library-${new Date().toISOString().slice(0,10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
-    // Also write to folder root if connected
-    await _exportLibraryToFolder(payload);
   });
 }
 
@@ -4214,7 +3805,6 @@ function importLibraryJSON(file) {
         segmentIdCounter: s.segmentIdCounter || 0,
         notes: s.notes || '',
         savedAt: s.savedAt || Date.now(),
-        libraryId: s.libraryId || null,
         collectionIds: Array.isArray(s.collectionIds) ? s.collectionIds : []
       };
     });
@@ -4224,14 +3814,11 @@ function importLibraryJSON(file) {
 
     // Merge into existing — add new, skip existing (don't overwrite)
     const existing = await loadSessionsFromStorage();
-    // Bring in any Library/Collection definitions from the backup that aren't
-    // already present locally (matched by id), so imported pieces' libraryId/
-    // collectionIds actually resolve to something visible.
-    if (raw.__libraries__ && typeof raw.__libraries__ === 'object') {
-      Object.keys(raw.__libraries__).forEach(id => {
-        if (!existing.__libraries__[id]) existing.__libraries__[id] = raw.__libraries__[id];
-      });
-    }
+    // Bring in any Collection definitions from the backup that aren't
+    // already present locally (matched by id), so imported pieces'
+    // collectionIds actually resolve to something visible. (Older backups
+    // may also contain a __libraries__ key from pre-v10 exports — it's
+    // intentionally ignored, since library architecture was removed.)
     if (raw.__collections__ && typeof raw.__collections__ === 'object') {
       Object.keys(raw.__collections__).forEach(id => {
         if (!existing.__collections__[id]) existing.__collections__[id] = raw.__collections__[id];
@@ -5531,238 +5118,6 @@ function _renderSessionLog() {
 }
 
 // ══════════════════════════════════════════════
-// FOLDER ARCHITECTURE (File System Access API)
-// ══════════════════════════════════════════════
-let rsRootHandle  = null;  // FileSystemDirectoryHandle — root Rehearsal Space folder
-let rsFolderName  = null;  // stored folder name for display
-const RS_FOLDER_KEY = 'rs_folder_name_v1';
-const FS_SUPPORTED  = ('showDirectoryPicker' in window);
-
-// ── Init on load ──
-async function _initFolderAccess() {
-  if (!FS_SUPPORTED) { _showFolderBanner('unsupported'); return; }
-  rsFolderName = localStorage.getItem(RS_FOLDER_KEY);
-  if (rsFolderName) {
-    // We've connected before — show reconnect banner
-    _showFolderBanner('needs-reconnect');
-  } else {
-    // First time — invite connection
-    _showFolderBanner('unconnected');
-  }
-}
-
-function _showFolderBanner(state) {
-  const actionBtn = document.getElementById('folder-menu-action');
-  const statusEl  = document.getElementById('folder-status-inline');
-  if (!actionBtn || !statusEl) return;
-  // Remove any previously-added "Change folder" item so it isn't duplicated
-  const existingChange = document.getElementById('folder-change-item');
-  if (existingChange) existingChange.remove();
-  if (state === 'unconnected') {
-    actionBtn.textContent = 'Connect local folder';
-    actionBtn.style.display = '';
-    statusEl.style.display = 'none';
-  } else if (state === 'needs-reconnect') {
-    actionBtn.textContent = 'Reconnect local folder';
-    actionBtn.style.display = '';
-    statusEl.style.display = '';
-    statusEl.innerHTML = `Was connected to <strong>${escHtml(rsFolderName||'Rehearsal Space')}</strong> — reconnect to resume`;
-  } else if (state === 'connected') {
-    actionBtn.style.display = 'none';
-    statusEl.style.display = '';
-    statusEl.innerHTML = `<strong>✓ ${escHtml(rsFolderName||'Rehearsal Space')}</strong> connected`;
-    const changeItem = document.createElement('button');
-    changeItem.className = 'hdr-dropdown-item';
-    changeItem.id = 'folder-change-item';
-    changeItem.textContent = 'Change local folder';
-    changeItem.onclick = () => { changeFolder(); closeHdrMenus(); };
-    statusEl.insertAdjacentElement('beforebegin', changeItem);
-  } else if (state === 'unsupported') {
-    actionBtn.style.display = 'none';
-    statusEl.style.display = '';
-    statusEl.textContent = 'Folder saving requires Chrome or Edge — using browser downloads instead';
-  }
-}
-
-async function folderBannerAction() {
-  if (rsRootHandle) {
-    // Already have handle — just reconnect permission
-    await _reconnectFolder();
-  } else {
-    await _connectFolder();
-  }
-}
-
-async function _connectFolder() {
-  try {
-    const handle = await window.showDirectoryPicker({ mode: 'readwrite', startIn: 'desktop' });
-    rsRootHandle = handle;
-    rsFolderName = handle.name;
-    localStorage.setItem(RS_FOLDER_KEY, rsFolderName);
-    _showFolderBanner('connected');
-    await _migrateFromLocalStorage();
-  } catch(e) {
-    if (e.name !== 'AbortError') console.warn('Folder connect failed:', e);
-  }
-}
-
-async function _reconnectFolder() {
-  try {
-    const handle = await window.showDirectoryPicker({ mode: 'readwrite', startIn: 'desktop' });
-    rsRootHandle = handle;
-    rsFolderName = handle.name;
-    localStorage.setItem(RS_FOLDER_KEY, rsFolderName);
-    _showFolderBanner('connected');
-  } catch(e) {
-    if (e.name !== 'AbortError') console.warn('Folder reconnect failed:', e);
-  }
-}
-
-async function changeFolder() {
-  try {
-    const handle = await window.showDirectoryPicker({ mode: 'readwrite', startIn: 'desktop' });
-    rsRootHandle = handle;
-    rsFolderName = handle.name;
-    localStorage.setItem(RS_FOLDER_KEY, rsFolderName);
-    _showFolderBanner('connected');
-    // Offer to migrate existing data into the new folder
-    await _migrateFromLocalStorage();
-  } catch(e) {
-    if (e.name !== 'AbortError') console.warn('Change folder failed:', e);
-  }
-}
-
-// ── Get or create a piece subfolder ──
-async function _getPieceFolder(pieceName) {
-  if (!rsRootHandle) return null;
-  const safe = pieceName.replace(/[\\/:*?"<>|]/g, '-').trim() || 'Untitled';
-  try {
-    const dir = await rsRootHandle.getDirectoryHandle(safe, { create: true });
-    return dir;
-  } catch(e) { return null; }
-}
-
-// ── Write text file into a folder handle ──
-async function _writeFile(dirHandle, filename, content) {
-  try {
-    const fh = await dirHandle.getFileHandle(filename, { create: true });
-    const w  = await fh.createWritable();
-    await w.write(content);
-    await w.close();
-    return true;
-  } catch(e) { return false; }
-}
-
-// ── Save current session to folder ──
-async function _saveSessionToFolder(pieceName, sessionData, notes) {
-  if (!rsRootHandle) return false;
-  const pieceDir = await _getPieceFolder(pieceName);
-  if (!pieceDir) return false;
-  // Embed notes directly in session.json — no separate notes.txt
-  const merged = { ...sessionData, notes: notes || '' };
-  const sessionJson = JSON.stringify(merged, null, 2);
-  await _writeFile(pieceDir, 'session.json', sessionJson);
-  // Create recordings subfolder
-  try { await pieceDir.getDirectoryHandle('recordings', { create: true }); } catch(e) {}
-  return true;
-}
-
-// ── Save a recording clip to the piece's recordings folder ──
-async function _saveClipToFolder(clip) {
-  if (!rsRootHandle) return false;
-  const pieceName = currentPieceName || audioFileName || 'Untitled';
-  const pieceDir = await _getPieceFolder(pieceName);
-  if (!pieceDir) return false;
-  try {
-    const recDir = await pieceDir.getDirectoryHandle('recordings', { create: true });
-    const date = new Date().toISOString().slice(0, 10);
-    const tempoPart = `${Math.round(currentSpeed * 100)}pct`;
-    const safeName = (clip.label || 'clip').replace(/[\\/:*?"<>|]/g, '-');
-    const filename = `${safeName}_${date}_${tempoPart}.${clip.ext}`;
-    const fh = await recDir.getFileHandle(filename, { create: true });
-    const w  = await fh.createWritable();
-    await w.write(clip.blob);
-    await w.close();
-    return true;
-  } catch(e) { return false; }
-}
-
-// ── Migration: read all localStorage sessions, write to folder ──
-async function _migrateFromLocalStorage() {
-  if (!rsRootHandle) return;
-  const statusPanel = document.getElementById('migrate-status-panel');
-  const statusContent = document.getElementById('migrate-status-content');
-  if (statusPanel) statusPanel.style.display = '';
-
-  const sessions = await loadSessionsFromStorage();
-  const allKeys = Object.keys(sessions).filter(k => !_isMetaKey(k));
-  if (!allKeys.length) {
-    if (statusContent) statusContent.innerHTML =
-      '<span style="color:var(--text-faint)">No localStorage sessions found.</span>';
-    return;
-  }
-
-  let html = '';
-  let allDone = true;
-  for (const name of allKeys) {
-    const s = sessions[name];
-    const notes = s.notes || '';
-    const sessionData = {
-      piece: name,
-      audio: s.audioFileName || '',
-      version: 'rs_v1',
-      savedAt: s.savedAt || Date.now(),
-      markers: (s.markers || []).map(m => ({
-        id: m.id, label: m.label, bar: m.bar || '',
-        time: m.time, locked: m.locked || false,
-        type: m.type || 'R',
-        annotation: m.annotation || null
-      })),
-      loops: (s.segments || []).map(seg => {
-        const sm = (s.markers||[]).find(m => m.id === seg.startId);
-        const em = (s.markers||[]).find(m => m.id === seg.endId);
-        return {
-          id: seg.id, label: seg.name || '',
-          startId: seg.startId, endId: seg.endId,
-          fromLabel: sm ? sm.label : '', toLabel: em ? em.label : ''
-        };
-      }),
-      markerIdCounter: s.markerIdCounter || 0,
-      segmentIdCounter: s.segmentIdCounter || 0
-    };
-    const ok = await _saveSessionToFolder(name, sessionData, notes);
-    if (ok) {
-      html += `<div class="migrate-row"><span class="migrate-check">✓</span> <span>${escHtml(name)}</span></div>`;
-    } else {
-      html += `<div class="migrate-row"><span class="migrate-pending">✗</span> <span>${escHtml(name)} — failed</span></div>`;
-      allDone = false;
-    }
-  }
-  if (statusContent) statusContent.innerHTML = html;
-  // Show clear button only when all migrated successfully
-  const clearRow = document.getElementById('clear-ls-row');
-  if (clearRow && allDone) clearRow.style.display = '';
-}
-
-async function clearLocalStorageBackup() {
-  if (!confirm('Remove localStorage backup? Your data is now in the Rehearsal Space folder.')) return;
-  localStorage.removeItem(SESSIONS_STORAGE_KEY);
-  localStorage.removeItem(SESSION_KEY);
-  document.getElementById('migrate-status-panel').style.display = 'none';
-  renderSessionsList();
-}
-
-// ── Export library JSON — also write copy to folder root ──
-async function _exportLibraryToFolder(payload) {
-  if (!rsRootHandle) return;
-  try {
-    const date = new Date().toISOString().slice(0, 10);
-    const filename = `library-backup-${date}.json`;
-    await _writeFile(rsRootHandle, filename, JSON.stringify(payload, null, 2));
-  } catch(e) {}
-}
-
-// ══════════════════════════════════════════════
 // UNDO
 // ══════════════════════════════════════════════
 function pushUndo() {
@@ -6643,13 +5998,11 @@ renderSessionsList();
 _updatePieceTitle();
 _loadLeadIn();
 _renderSessionLog();
-_initFolderAccess();
 setMarkMode('structural');
 _loadUniversalNotes();
 _renderCalHistory();
 _initAutoResize('piece-notes');
 _initAutoResize('universal-notes');
-_refreshNewPieceLibrarySelect();
 // Collapsible sections — all windows except the main player/waveform.
 // Primary working panels default OPEN; reference/rarely-used panels default collapsed.
 _restoreSectionCollapse('library', false);
@@ -6725,7 +6078,7 @@ window.addEventListener('beforeunload', e => {
     if (currentUser) {
       banner.classList.add('connected');
       const who = currentUser.email || currentUser.displayName || 'Google account';
-      msg.innerHTML = `<strong>✓ Signed in</strong> as ${who} — data still saves locally only, for now`;
+      msg.innerHTML = `<strong>✓ Signed in</strong> as ${who} — synced automatically across your devices`;
       btn.textContent = 'Sign out';
     } else {
       banner.classList.remove('connected');
@@ -6766,9 +6119,9 @@ window.addEventListener('beforeunload', e => {
   // on — per the memo's phased plan, this gets stress-tested on one real
   // piece before any bulk/automatic sync of the rest of the library exists.
   // Data shape: users/{uid}/pieces/{pieceId} holds the same fields already
-  // used locally (markers, segments, notes, libraryId, collectionIds, etc).
-  // users/{uid}/organization/libraries and .../organization/collections carry
-  // the registries so libraryId/collectionIds resolve to something
+  // used locally (markers, segments, notes, collectionIds, etc).
+  // users/{uid}/organization/collections carries the registry so
+  // collectionIds resolve to something
   // meaningful if this is ever read from a different device. Audio uploads
   // to Storage only if a real file is attached this session — see
   // currentAudioFile's declaration in the main script for why that's the
@@ -6784,7 +6137,7 @@ window.addEventListener('beforeunload', e => {
     return name.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 120) || 'piece';
   }
 
-  window.cloudSyncCurrentPiece = async function(pieceName, pieceData, audioFile, libraries, collections) {
+  window.cloudSyncCurrentPiece = async function(pieceName, pieceData, audioFile, collections) {
     if (!currentUser) return { ok: false, reason: 'not-signed-in' };
     const pieceId = _slugifyPieceId(pieceName);
     try {
@@ -6810,8 +6163,6 @@ window.addEventListener('beforeunload', e => {
         lastSyncedAt: Date.now()
       }, { merge: true });
       await setDoc(doc(db, 'users', currentUser.uid, 'pieces', pieceId), pieceDoc, { merge: true });
-      await setDoc(doc(db, 'users', currentUser.uid, 'organization', 'libraries'),
-        { libraries: libraries || {} }, { merge: true });
       await setDoc(doc(db, 'users', currentUser.uid, 'organization', 'collections'),
         { collections: collections || {} }, { merge: true });
       return { ok: true, audioUploaded };
@@ -6836,20 +6187,18 @@ window.addEventListener('beforeunload', e => {
     }
   };
 
+  // Kept named "LibrariesAndCollections" in a couple of older comments for
+  // continuity, but as of v10 only fetches Collections — the Library
+  // registry was removed (folded into Collections, which already supports
+  // the multi-membership use case a library never could).
   window.cloudFetchLibrariesAndCollections = async function() {
-    if (!currentUser) return { libraries: {}, collections: {} };
+    if (!currentUser) return { collections: {} };
     try {
-      const [libSnap, colSnap] = await Promise.all([
-        getDoc(doc(db, 'users', currentUser.uid, 'organization', 'libraries')),
-        getDoc(doc(db, 'users', currentUser.uid, 'organization', 'collections'))
-      ]);
-      return {
-        libraries: libSnap.exists() ? (libSnap.data().libraries || {}) : {},
-        collections: colSnap.exists() ? (colSnap.data().collections || {}) : {}
-      };
+      const colSnap = await getDoc(doc(db, 'users', currentUser.uid, 'organization', 'collections'));
+      return { collections: colSnap.exists() ? (colSnap.data().collections || {}) : {} };
     } catch(e) {
       console.error('Cloud organization fetch failed:', e);
-      return { libraries: {}, collections: {} };
+      return { collections: {} };
     }
   };
 
@@ -7081,19 +6430,6 @@ window.addEventListener('beforeunload', e => {
       if (e?.code !== 'storage/object-not-found') console.warn('Cloud audio delete failed:', e);
     }
     return { ok: true };
-  };
-
-  window.cloudDeleteLibrary = async function(libId) {
-    if (!currentUser) return { ok: false, reason: 'not-signed-in' };
-    try {
-      await updateDoc(doc(db, 'users', currentUser.uid, 'organization', 'libraries'), {
-        [`libraries.${libId}`]: deleteField()
-      });
-      return { ok: true };
-    } catch(e) {
-      console.warn('Cloud library delete failed (local delete still stands):', e);
-      return { ok: false, reason: 'error', error: e };
-    }
   };
 
   window.cloudDeleteCollection = async function(colId) {
